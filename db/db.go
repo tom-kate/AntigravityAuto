@@ -41,6 +41,7 @@ type MasterAccount struct {
 	TwoFALink     string     `json:"two_fa_link"`
 	Remark        string     `json:"remark"`
 	ExpiresAt     *time.Time `json:"expires_at,omitempty"`
+	PurchasedAt   *time.Time `json:"purchased_at,omitempty"`
 	WeeklyLimited bool       `json:"weekly_limited"`
 }
 
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS masters (
     two_fa_link TEXT DEFAULT '',
     remark TEXT DEFAULT '',
     expires_at TEXT,
+    purchased_at TEXT,
     weekly_limited INTEGER DEFAULT 0
 );
 
@@ -136,6 +138,9 @@ func Init(dbPath string) error {
 	if _, err := sqlDB.Exec(createTablesSQL); err != nil {
 		return fmt.Errorf("failed to create tables: %v", err)
 	}
+
+	// Auto-migrate: add columns that may not exist yet
+	sqlDB.Exec("ALTER TABLE masters ADD COLUMN purchased_at TEXT")
 
 	DB = &Database{db: sqlDB}
 	return nil
@@ -235,11 +240,15 @@ func (d *Database) AddMaster(m MasterAccount) string {
 	if m.ExpiresAt != nil {
 		expiresAt = sql.NullString{String: m.ExpiresAt.Format(time.RFC3339), Valid: true}
 	}
+	var purchasedAt sql.NullString
+	if m.PurchasedAt != nil {
+		purchasedAt = sql.NullString{String: m.PurchasedAt.Format(time.RFC3339), Valid: true}
+	}
 
 	d.db.Exec(
-		`INSERT INTO masters (id, email, password, aux_email, two_fa_link, remark, expires_at, weekly_limited)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		m.ID, m.Email, m.Password, m.AuxEmail, m.TwoFALink, m.Remark, expiresAt, boolToInt(m.WeeklyLimited),
+		`INSERT INTO masters (id, email, password, aux_email, two_fa_link, remark, expires_at, purchased_at, weekly_limited)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		m.ID, m.Email, m.Password, m.AuxEmail, m.TwoFALink, m.Remark, expiresAt, purchasedAt, boolToInt(m.WeeklyLimited),
 	)
 	return m.ID
 }
@@ -249,7 +258,7 @@ func (d *Database) GetAllMasters() []MasterAccount {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	rows, err := d.db.Query(`SELECT id, email, password, aux_email, two_fa_link, remark, expires_at, weekly_limited FROM masters`)
+	rows, err := d.db.Query(`SELECT id, email, password, aux_email, two_fa_link, remark, expires_at, purchased_at, weekly_limited FROM masters`)
 	if err != nil {
 		return []MasterAccount{}
 	}
@@ -265,9 +274,10 @@ func (d *Database) GetAllMasters() []MasterAccount {
 			twoFALink     string
 			remark        string
 			expiresAt     sql.NullString
+			purchasedAt   sql.NullString
 			weeklyLimited int
 		)
-		if err := rows.Scan(&id, &email, &password, &auxEmail, &twoFALink, &remark, &expiresAt, &weeklyLimited); err != nil {
+		if err := rows.Scan(&id, &email, &password, &auxEmail, &twoFALink, &remark, &expiresAt, &purchasedAt, &weeklyLimited); err != nil {
 			continue
 		}
 		result = append(result, MasterAccount{
@@ -278,6 +288,7 @@ func (d *Database) GetAllMasters() []MasterAccount {
 			TwoFALink:     twoFALink,
 			Remark:        remark,
 			ExpiresAt:     parseNullableTime(expiresAt),
+			PurchasedAt:   parseNullableTime(purchasedAt),
 			WeeklyLimited: weeklyLimited != 0,
 		})
 	}
@@ -300,11 +311,12 @@ func (d *Database) GetMaster(id string) *MasterAccount {
 		twoFALink     string
 		remark        string
 		expiresAt     sql.NullString
+		purchasedAt   sql.NullString
 		weeklyLimited int
 	)
 	err := d.db.QueryRow(
-		`SELECT id, email, password, aux_email, two_fa_link, remark, expires_at, weekly_limited FROM masters WHERE id = ?`, id,
-	).Scan(&mid, &email, &password, &auxEmail, &twoFALink, &remark, &expiresAt, &weeklyLimited)
+		`SELECT id, email, password, aux_email, two_fa_link, remark, expires_at, purchased_at, weekly_limited FROM masters WHERE id = ?`, id,
+	).Scan(&mid, &email, &password, &auxEmail, &twoFALink, &remark, &expiresAt, &purchasedAt, &weeklyLimited)
 	if err != nil {
 		return nil
 	}
@@ -316,6 +328,7 @@ func (d *Database) GetMaster(id string) *MasterAccount {
 		TwoFALink:     twoFALink,
 		Remark:        remark,
 		ExpiresAt:     parseNullableTime(expiresAt),
+		PurchasedAt:   parseNullableTime(purchasedAt),
 		WeeklyLimited: weeklyLimited != 0,
 	}
 }

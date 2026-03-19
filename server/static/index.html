@@ -82,6 +82,7 @@
               <div class="flex items-center gap-2 shrink-0">
                 <span v-if="m.two_fa_link" @click="get2FA(m.id)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] px-2 py-1 rounded-lg font-bold cursor-pointer hover:bg-[#58a6ff25] transition select-none">2FA</span>
                 <span v-if="m.weekly_limited" class="text-[10px] text-[#d29922] bg-[#d2992215] px-2 py-1 rounded-lg font-bold animate-pulse">周限</span>
+                <span :class="warrantyStatus(m).cls" class="text-[10px] font-semibold px-2 py-1 rounded-lg">{{warrantyStatus(m).label}}</span>
                 <span :class="expiryStatus(m).cls" class="text-[10px] font-semibold px-2 py-1 rounded-lg">{{expiryStatus(m).label}}</span>
                 <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-1.5 text-center ml-1">
                   <div class="text-[16px] font-bold leading-none" :class="m.used_subs>=5?'text-[#f85149]':'text-[#e6edf3]'">{{m.used_subs}}<span class="text-[#484f58] font-normal text-[12px]">/5</span></div>
@@ -207,7 +208,11 @@
                  placeholder="邮箱----密码----辅助邮箱----2FA链接">
           <p class="text-[10px] text-[#484f58] mt-1">用 ---- (四个横线) 分隔各字段</p>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">购买时间</label>
+            <input v-model="addPurchased" type="date" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition">
+          </div>
           <div>
             <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">到期时间</label>
             <input v-model="addExpiry" type="date" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition">

@@ -64,7 +64,7 @@ func SMSLogin() error {
 		return nil
 	}
 
-	apiURL := fmt.Sprintf("https://web.tqsms.xyz/api/login?username=%s&password=%s",
+	apiURL := fmt.Sprintf("https://api.qc86.shop/api/login?username=%s&password=%s",
 		url.QueryEscape(cfg.SMSUsername), url.QueryEscape(cfg.SMSPassword))
 
 	resp, err := getSMSClient().Get(apiURL)
@@ -126,7 +126,7 @@ func GetPhoneNumber() (formatted string, raw string, phoneID string, err error) 
 	}
 
 	cfg := config.Get()
-	apiURL := fmt.Sprintf("https://web.tqsms.xyz/api/getPhone?token=%s&channelId=%s&operator=0",
+	apiURL := fmt.Sprintf("https://api.qc86.shop/api/getPhone?token=%s&channelId=%s&operator=0",
 		url.QueryEscape(token), url.QueryEscape(cfg.SMSChannelID))
 
 	resp, err := getSMSClient().Get(apiURL)
@@ -182,7 +182,7 @@ func GetSMSCode(rawPhoneNum, phoneID string) (string, error) {
 	cfg := config.Get()
 
 	for i := 0; i < 60; i++ {
-		apiURL := fmt.Sprintf("https://web.tqsms.xyz/api/getCode?token=%s&channelId=%s&phoneNum=%s",
+		apiURL := fmt.Sprintf("https://api.qc86.shop/api/getCode?token=%s&channelId=%s&phoneNum=%s",
 			url.QueryEscape(token), url.QueryEscape(cfg.SMSChannelID), url.QueryEscape(rawPhoneNum))
 
 		resp, err := getSMSClient().Get(apiURL)
@@ -217,7 +217,7 @@ func ReleasePhone(phoneNo string) error {
 		return nil
 	}
 	cfg := config.Get()
-	apiURL := fmt.Sprintf("https://web.tqsms.xyz/api/release?token=%s&channelId=%s&phoneNo=%s&status=2",
+	apiURL := fmt.Sprintf("https://api.qc86.shop/api/release?token=%s&channelId=%s&phoneNo=%s&status=2",
 		url.QueryEscape(token), url.QueryEscape(cfg.SMSChannelID), url.QueryEscape(phoneNo))
 
 	resp, err := getSMSClient().Get(apiURL)

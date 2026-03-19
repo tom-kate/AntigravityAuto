@@ -5,7 +5,7 @@ createApp({
     const quotas=reactive({});
     const quotaLoading=ref(false);
     const quotaLoadingSet=reactive({});
-    const masterInput=ref(''),addExpiry=ref(''),addRemark=ref(''),showAddModal=ref(false);
+    const masterInput=ref(''),addExpiry=ref(''),addPurchased=ref(''),addRemark=ref(''),showAddModal=ref(false);
     const editingId=ref(''),editRemark=ref(''),editExpiry=ref('');
     const subModal=ref({show:false,type:'batch',masterID:'',text:'',concurrency:1});
     const cpaModal=ref({show:false,email:'',statusText:'',labelCls:'',json:'',jsonColor:''});
@@ -52,6 +52,7 @@ createApp({
     // Time
     function fmtExpiry(t){if(!t)return'-';return new Date(t).toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'})}
     function expiryStatus(m){if(!m.expires_at)return{label:'永久',cls:'text-[#8b949e] bg-[#21262d]'};const diff=Math.ceil((new Date(m.expires_at)-new Date())/86400000);if(diff<0)return{label:'已过期',cls:'text-[#f85149] bg-[#f8514915]'};if(diff<=3)return{label:diff+'天',cls:'text-[#f85149] bg-[#f8514915] animate-pulse'};if(diff<=7)return{label:diff+'天',cls:'text-[#d29922] bg-[#d2992215]'};return{label:diff+'天',cls:'text-[#3fb950] bg-[#3fb95015]'};}
+    function warrantyStatus(m){if(!m.purchased_at)return{label:'',cls:'hidden'};const days=Math.floor((new Date()-new Date(m.purchased_at))/86400000);if(days>5)return{label:'已过保',cls:'text-[#f85149] bg-[#f8514915]'};return{label:'在保('+days+'天)',cls:'text-[#3fb950] bg-[#3fb95015]'};}
 
     // Data
     function getSubsForMaster(mid){const s=[];batches.value.forEach(b=>{if(b.master_id===mid)b.accounts.forEach(a=>s.push(a))});return s}
@@ -74,7 +75,7 @@ createApp({
     function showSubInfo(a){subDetail.value={show:true,email:a.email,password:a.password,aux_email:a.aux_email||'',two_fa:a.two_fa||'',status:statusLabel(a.status),step:stepLabel(a.step),phone_bound:a.phone_bound}}
     function copySubFull(){const d=subDetail.value;const t=[d.email,d.password,d.aux_email,d.two_fa].join('---');copyText(t)}
     function parseMaster(line){const p=line.split('----');if(p.length<2)return null;return{email:p[0].trim(),password:p[1].trim(),aux_email:(p[2]||'').trim(),two_fa_link:(p[3]||'').trim()}}
-    async function addMaster(){const m=parseMaster(masterInput.value);if(!m){showToast('格式错误',false);return}if(addExpiry.value)m.expires_at=new Date(addExpiry.value+'T23:59:59').toISOString();if(addRemark.value)m.remark=addRemark.value;try{await axios.post('/api/masters',m);showToast('添加成功');masterInput.value='';addExpiry.value='';addRemark.value='';showAddModal.value=false;loadMain()}catch(e){showToast(e.response?.data?.error||'添加失败',false)}}
+    async function addMaster(){const m=parseMaster(masterInput.value);if(!m){showToast('格式错误',false);return}if(addExpiry.value)m.expires_at=new Date(addExpiry.value+'T23:59:59').toISOString();if(addPurchased.value)m.purchased_at=new Date(addPurchased.value+'T00:00:00').toISOString();if(addRemark.value)m.remark=addRemark.value;try{await axios.post('/api/masters',m);showToast('添加成功');masterInput.value='';addExpiry.value='';addPurchased.value='';addRemark.value='';showAddModal.value=false;loadMain()}catch(e){showToast(e.response?.data?.error||'添加失败',false)}}
     async function delMaster(id){if(!confirm('确认删除？'))return;try{await axios.post('/api/master/'+id+'/delete');showToast('已删除');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
     function startEdit(m){editingId.value=m.id;editRemark.value=m.remark||'';editExpiry.value=m.expires_at?new Date(m.expires_at).toISOString().split('T')[0]:''}
     async function saveEdit(id){const p={remark:editRemark.value};if(editExpiry.value)p.expires_at=new Date(editExpiry.value+'T23:59:59').toISOString();else p.clear_expiry=true;try{await axios.post('/api/master/'+id+'/update',p);showToast('已保存');editingId.value='';loadMain()}catch(e){showToast(e.response?.data?.error||'保存失败',false)}}
@@ -108,9 +109,9 @@ createApp({
     onMounted(async()=>{await loadMain();await loadCPA();timer=setInterval(loadMain,3000);cpaTimer=setInterval(loadCPA,30000);});
     onUnmounted(()=>{clearInterval(timer);clearInterval(cpaTimer)});
 
-    return{masters,batches,cpaFiles,quotas,quotaLoading,quotaLoadingSet,masterInput,addExpiry,addRemark,showAddModal,cpaModal,masterDetail,subDetail,totalSubs,
+    return{masters,batches,cpaFiles,quotas,quotaLoading,quotaLoadingSet,masterInput,addExpiry,addPurchased,addRemark,showAddModal,cpaModal,masterDetail,subDetail,totalSubs,
       editingId,editRemark,editExpiry,startEdit,saveEdit,toggleWeeklyLimit,refreshAllQuotas,refreshSingleQuota,get2FA,
-      subModal,openSubModal,submitSubModal,showMasterInfo,copyText,copyMasterFull,showSubInfo,copySubFull,
+      subModal,openSubModal,submitSubModal,showMasterInfo,copyText,copyMasterFull,showSubInfo,copySubFull,warrantyStatus,
       statusLabel,stepLabel,statusColor,dotClass,batchLabel,batchColor,batchDot,cnt,hasNonSuccess,
       cpaStatusText,cpaLabelClass,showCPADetail,barColor,barTextColor,fmtReset,
       getMasterQuotaOverview,globalQuota,quotaSubCount,
