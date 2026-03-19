@@ -23,6 +23,9 @@ const navTimeout = 120000
 // errRecaptcha is a sentinel error indicating a recaptcha challenge was encountered.
 var errRecaptcha = fmt.Errorf("recaptcha: 出现人机验证")
 
+// errManualCheck is a sentinel error indicating the account needs manual review.
+var errManualCheck = fmt.Errorf("manual_check: 需要人工确认")
+
 // checkRecaptcha checks if the current URL is a recaptcha challenge page.
 func checkRecaptcha(pageURL string) bool {
 	return strings.Contains(pageURL, "signin/challenge/recaptcha")
@@ -137,7 +140,7 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 	}
 
 	// ─── Step 2: OAuth → CPA check → (phone bind / retry) loop ───
-	const maxCPACycles = 3    // total OAuth→CPA cycles
+	const maxCPACycles = 2    // total OAuth→CPA cycles
 	const maxCPAPolls = 10    // polls per cycle (10 × 3s = 30s max wait)
 	const cpaPollInterval = 3 // seconds between polls
 	const maxOAuthRetries = 3 // retries if callback fails
@@ -256,9 +259,9 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 		}
 	}
 
-	// All cycles exhausted without resolution
-	L.Fail(email, fmt.Sprintf("CPA 验证 %d 轮均未通过", maxCPACycles))
-	return fmt.Errorf("cpa_check: exhausted %d cycles without resolution", maxCPACycles)
+	// All cycles exhausted — mark for manual review and skip
+	L.Warn(email, fmt.Sprintf("CPA 验证 %d 轮均未获取到手机绑定链接, 标记为人工确认", maxCPACycles))
+	return errManualCheck
 }
 
 // ─── Login Logic ────────────────────────────────────────────────
@@ -787,6 +790,12 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 		// Recaptcha: mark as error and skip, no retry
 		if err == errRecaptcha {
 			updateStatus(batchID, idx, db.StatusError, "recaptcha", "出现人机验证")
+			return
+		}
+
+		// Manual check: mark and skip, no retry
+		if err == errManualCheck {
+			updateStatus(batchID, idx, db.StatusError, "manual_check", "CPA 未返回手机绑定链接, 需人工确认")
 			return
 		}
 
