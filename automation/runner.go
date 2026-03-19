@@ -453,7 +453,16 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 
 // ─── OAuth Start Logic ──────────────────────────────────────────
 
+// oauthMu serializes all OAuth flows — CPA can only handle one OAuth at a time.
+// Getting URL → browser login → consent → callback must complete before the next one starts.
+var oauthMu sync.Mutex
+
 func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserContext, oauthCallbackCh chan bool) error {
+	L.Info(email, "等待 OAuth 锁...")
+	oauthMu.Lock()
+	defer oauthMu.Unlock()
+	L.Info(email, "已获取 OAuth 锁, 开始授权")
+
 	oauthURL, err := api.GetOAuthURL()
 	if err != nil {
 		return fmt.Errorf("oauth_start: get oauth url failed: %w", err)
