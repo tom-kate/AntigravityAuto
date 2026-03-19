@@ -15,9 +15,9 @@ type Config struct {
 	ProxyEnabled bool   `yaml:"proxy_enabled"  json:"proxy_enabled"`
 	CPAToken     string `yaml:"cpa_token"      json:"cpa_token"`
 	CPAAPIURL    string `yaml:"cpa_api_url"    json:"cpa_api_url"`
-	SMSToken     string `yaml:"sms_token"      json:"sms_token"`
+	SMSUsername  string `yaml:"sms_username"   json:"sms_username"`
+	SMSPassword string `yaml:"sms_password"   json:"sms_password"`
 	SMSChannelID string `yaml:"sms_channel_id" json:"sms_channel_id"`
-	SMSCode      string `yaml:"sms_code"       json:"sms_code"`
 	Headless     bool   `yaml:"headless"       json:"headless"`
 	Concurrency  int    `yaml:"concurrency"    json:"concurrency"`
 	Port         int    `yaml:"port"           json:"port"`

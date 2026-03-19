@@ -113,19 +113,20 @@
             <span class="text-[#e6edf3] font-semibold text-[14px]">短信平台</span>
           </div>
           <div class="space-y-4">
-            <div>
-              <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">Token</label>
-              <input v-model="form.sms_token" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition">
-            </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">频道 ID</label>
-                <input v-model="form.sms_channel_id" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition">
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">API 用户名</label>
+                <input v-model="form.sms_username" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="API Username">
               </div>
               <div>
-                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">项目代号</label>
-                <input v-model="form.sms_code" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition">
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">API 密码</label>
+                <input v-model="form.sms_password" type="password" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="API Password">
               </div>
+            </div>
+            <div>
+              <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">频道 ID (对接码)</label>
+              <input v-model="form.sms_channel_id" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="channelId">
+              <p class="text-[10px] text-[#484f58] mt-1">保存后需重启程序以重新登录短信平台</p>
             </div>
           </div>
         </div>

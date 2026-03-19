@@ -1,7 +1,7 @@
 const {createApp,ref,onMounted} = Vue;
 createApp({
   setup(){
-    const form=ref({proxy:'',proxy_enabled:false,cpa_token:'',cpa_api_url:'',sms_token:'',sms_channel_id:'',sms_code:'',headless:false,concurrency:1,port:8080});
+    const form=ref({proxy:'',proxy_enabled:false,cpa_token:'',cpa_api_url:'',sms_username:'',sms_password:'',sms_channel_id:'',headless:false,concurrency:1,port:8080});
     const loaded=ref(false),saving=ref(false),saved=ref(false);
 
     async function loadConfig(){

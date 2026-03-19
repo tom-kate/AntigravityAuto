@@ -1,6 +1,7 @@
 package main
 
 import (
+	"antiauto/api"
 	"antiauto/config"
 	"antiauto/db"
 	L "antiauto/logger"
@@ -21,6 +22,11 @@ func main() {
 	L.Sys("初始化数据库...")
 	if err := db.Init("data.db"); err != nil {
 		log.Fatalf("Failed to init database: %v", err)
+	}
+
+	L.Sys("登录短信平台...")
+	if err := api.SMSLogin(); err != nil {
+		L.Warn("system", fmt.Sprintf("短信平台登录失败: %v", err))
 	}
 
 	cfg := config.Get()
