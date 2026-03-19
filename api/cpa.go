@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"antiauto/config"
@@ -59,7 +60,65 @@ func GetOAuthURL() (string, error) {
 	return authResp.URL, nil
 }
 
+// ─── OAuth Callback Queue ────────────────────────────────────────
+// Serializes all OAuth callbacks through a single goroutine to avoid
+// CPA server concurrency issues. Each caller submits a request and
+// waits for the result.
+
+type callbackRequest struct {
+	redirectURL string
+	result      chan error
+}
+
+var (
+	callbackQueue     chan callbackRequest
+	callbackQueueOnce sync.Once
+)
+
+func initCallbackQueue() {
+	callbackQueueOnce.Do(func() {
+		callbackQueue = make(chan callbackRequest, 100)
+		go callbackWorker()
+	})
+}
+
+func callbackWorker() {
+	for req := range callbackQueue {
+		// Process one callback at a time with retry
+		var lastErr error
+		for attempt := 1; attempt <= 3; attempt++ {
+			err := sendOAuthCallbackOnce(req.redirectURL)
+			if err == nil {
+				lastErr = nil
+				break
+			}
+			lastErr = err
+			log.Printf("OAuth Callback 重试 %d/3: %v", attempt, err)
+			if attempt < 3 {
+				time.Sleep(3 * time.Second)
+			}
+		}
+		// Wait a bit before processing the next one
+		time.Sleep(1 * time.Second)
+		req.result <- lastErr
+	}
+}
+
+// SendOAuthCallback submits a callback to the queue and waits for the result.
+// This ensures callbacks are processed one at a time.
 func SendOAuthCallback(redirectURL string) error {
+	initCallbackQueue()
+
+	req := callbackRequest{
+		redirectURL: redirectURL,
+		result:      make(chan error, 1),
+	}
+	callbackQueue <- req
+	return <-req.result
+}
+
+// sendOAuthCallbackOnce does a single callback attempt.
+func sendOAuthCallbackOnce(redirectURL string) error {
 	url := fmt.Sprintf("%s/v0/management/oauth-callback", config.App.CPAAPIURL)
 
 	payload := map[string]interface{}{
@@ -90,11 +149,11 @@ func SendOAuthCallback(redirectURL string) error {
 
 	var cbResp CallbackResponse
 	if err := json.Unmarshal(body, &cbResp); err != nil {
-		return err
+		return fmt.Errorf("parse callback response failed: %w (body: %s)", err, string(body))
 	}
 
 	if cbResp.Status != "ok" {
-		return fmt.Errorf("failed to send oauth callback: status %s", cbResp.Status)
+		return fmt.Errorf("callback status: %s (body: %s)", cbResp.Status, string(body))
 	}
 
 	return nil
