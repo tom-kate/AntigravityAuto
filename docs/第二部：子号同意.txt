@@ -1,0 +1,367 @@
+## 子号格式
+
+子号会放在当前目录，account.txt中，一行一个
+
+mungkhi245@gmail.com---qSNajCdbKfs3v6zt---iv6z pdmx rmr6 u7ji 6rtf a3yt o6sf 2qci
+
+邮箱---密码---2fa
+
+## 打开谷歌邮箱
+
+打开链接：https://mail.google.com
+
+页面会跳转到：
+
+https://accounts.google.com/v3/signin/identifier?get参数列表
+
+注意检测URL是否正确！
+
+输入邮箱，邮箱框元素：
+
+<input type="email" class="whsOnd zHQkBf" jsname="YPqjbf" autocomplete="username webauthn" spellcheck="false" tabindex="0" aria-label="邮箱或电话号码" aria-describedby="i8" name="identifier" value="" aria-disabled="false" autocapitalize="none" id="identifierId" dir="ltr" data-initial-dir="ltr" data-initial-value="">
+
+点击下一步按钮，下一步元素：
+
+<button class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-k8QpJ VfPpkd-LgbsSe-OWXEXe-dgl2Hf nCP5yc AjY5Oe DuMIQc LQeN7 BqKGqe Jskylb TrZEUc lw1w4b" jscontroller="soHxf" jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef;mlnRJb:fLiPzd;" data-idom-class="nCP5yc AjY5Oe DuMIQc LQeN7 BqKGqe Jskylb TrZEUc lw1w4b" jsname="LgbsSe" type="button"><div class="VfPpkd-Jh9lGc"></div><div class="VfPpkd-J1Ukfc-LhBDec"></div><div class="VfPpkd-RLmnJb"></div><span jsname="V67aGc" class="VfPpkd-vQzf8d">下一步</span></button>
+
+### 输入密码
+
+页面会跳转至：https://accounts.google.com/v3/signin/challenge/pwd?get参数列表
+
+注意检测URL是否正确！
+
+输入密码，密码框元素：
+
+<input type="password" class="whsOnd zHQkBf" jsname="YPqjbf" autocomplete="current-password webauthn" spellcheck="false" tabindex="0" aria-label="输入您的密码" aria-describedby="c0" name="Passwd" aria-disabled="false" autocapitalize="off" data-initial-value="">
+
+点击下一步，下一步元素：
+
+<button class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-k8QpJ VfPpkd-LgbsSe-OWXEXe-dgl2Hf nCP5yc AjY5Oe DuMIQc LQeN7 BqKGqe Jskylb TrZEUc lw1w4b" jscontroller="soHxf" jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef;mlnRJb:fLiPzd;" data-idom-class="nCP5yc AjY5Oe DuMIQc LQeN7 BqKGqe Jskylb TrZEUc lw1w4b" jsname="LgbsSe" type="button"><div class="VfPpkd-Jh9lGc"></div><div class="VfPpkd-J1Ukfc-LhBDec"></div><div class="VfPpkd-RLmnJb"></div><span jsname="V67aGc" class="VfPpkd-vQzf8d">下一步</span></button>
+
+### 输入2fa
+
+页面会跳转至：https://accounts.google.com/v3/signin/challenge/totp?get参数列表
+
+注意检测URL是否正确！
+
+2fa输入框，根据子号的2fa代码获取2fa验证码，输入框元素：
+
+<input type="tel" pattern="[0-9 ]*" class="whsOnd zHQkBf" jsname="YPqjbf" autocomplete="off" spellcheck="false" tabindex="0" aria-label="输入验证码" aria-describedby="c7" name="totpPin" aria-disabled="false" autocapitalize="off" id="totpPin" autocorrect="off" dir="ltr" data-initial-dir="ltr" data-initial-value="">
+
+点击下一步，下一步元素：
+
+<button class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-k8QpJ VfPpkd-LgbsSe-OWXEXe-dgl2Hf nCP5yc AjY5Oe DuMIQc LQeN7 BqKGqe Jskylb TrZEUc lw1w4b" jscontroller="soHxf" jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef;mlnRJb:fLiPzd;" data-idom-class="nCP5yc AjY5Oe DuMIQc LQeN7 BqKGqe Jskylb TrZEUc lw1w4b" jsname="LgbsSe" type="button"><div class="VfPpkd-Jh9lGc"></div><div class="VfPpkd-J1Ukfc-LhBDec"></div><div class="VfPpkd-RLmnJb"></div><span jsname="V67aGc" class="VfPpkd-vQzf8d">下一步</span></button>
+
+
+### 填写基本信息：
+
+页面会跳转至：https://gds.google.com/web/recoveryoptions?get参数列表
+
+注意检测URL是否正确！
+
+检查辅助邮箱输入框是否有内容，辅助邮箱输入框元素：
+
+<input type="email" value="" id="c11" jsname="YPqjbf" class="VfPpkd-fmcmS-wGMbrd " jsaction="focus:AHmuwe;blur:O22p3e;input:YPqjbf; mousedown:UX7yZ; mouseup:lbsD7e; pointerdown:QJflP; pointerup:HxTfMe; touchstart:p6p2H; touchend:yfqBxc" aria-controls="c14" aria-describedby="c14" aria-labelledby="c10" autocapitalize="none" spellcheck="false" autocomplete="off" aria-invalid="false">
+
+如果没有内容，就随机生成一个 xxx@pucode.com邮箱，填入进去。然后点击下一步，下一步元素：
+
+<button class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-k8QpJ nCP5yc AjY5Oe DuMIQc LQeN7 MXew1e z4D1vd" jscontroller="soHxf" jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef;mlnRJb:fLiPzd" data-idom-class="nCP5yc AjY5Oe DuMIQc LQeN7 MXew1e z4D1vd TFTvMc" jsname="M2UYVd" aria-label="Lưu" jslog="53557; 1:22; track:click"><div class="VfPpkd-Jh9lGc"></div><div class="VfPpkd-J1Ukfc-LhBDec"></div><span jsname="V67aGc" class="VfPpkd-vQzf8d">Lưu</span></button>
+
+页面会跳转至输入家庭地址页面：https://gds.google.com/web/homeaddress?get参数列表
+
+注意检测URL是否正确！
+
+然后点击跳过按钮
+
+<button class="VfPpkd-LgbsSe ksBjEc lKxP2d LQeN7 MXew1e lJTaZd" jscontroller="soHxf" jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef;mlnRJb:fLiPzd;" data-idom-class="ksBjEc lKxP2d LQeN7 MXew1e lJTaZd" jsname="ZUkOIc" aria-label="Bỏ qua" jslog="53558; 1:2; track:click"><div class="VfPpkd-Jh9lGc"></div><div class="VfPpkd-J1Ukfc-LhBDec"></div><span jsname="V67aGc" class="VfPpkd-vQzf8d">Bỏ qua</span></button>
+
+
+### 绑定手机
+
+页面会跳转至：https://accounts.google.com/uplevelingstep/selection?get参数列表
+
+注意检测URL是否正确！
+
+选择第二个接受手机验证码，基本上是ul的第二个li，元素是：
+
+<li class="aZvCDf cd29Sd zpCp3 SmR8 ACt4Tb"><div class="VV3oRb YZVTmd SmR8" role="link" tabindex="0" jsname="ibnC6b" data-step-type="1"><div class="Z1r7P" jsname="Bz112c" aria-hidden="true"><svg aria-hidden="true" class="Qk3oof" fill="currentColor" focusable="false" width="24px" height="24px" viewBox="0 0 24 24" xmlns="https://www.w3.org/2000/svg"><path d="M20,2 L4,2 C2.9,2 2.01,2.9 2.01,4 L2,22 L6,18 L20,18 C21.1,18 22,17.1 22,16 L22,4 C22,2.9 21.1,2 20,2 Z M20,16 L4,16 L4,4 L20,4 L20,16 Z M6,12 L14,12 L14,14 L6,14 L6,12 Z M6,9 L18,9 L18,11 L6,11 L6,9 Z M6,6 L18,6 L18,8 L6,8 L6,6 Z"></path></svg></div><div class="l5PPKe" jsname="fmcmS"><div class="dMNVAe">Xác minh số điện thoại của bạn</div><div class="C79rpc" jsname="bUNG7d">Sử dụng mã xác minh. Cước phí tin nhắn SMS sẽ được áp dụng.</div></div></div></li>
+
+
+### 输入手机号
+
+
+页面跳转至输入手机号的界面，链接是：https://accounts.google.com/v3/signin/challenge/iap?get参数列表
+
+注意检测URL是否正确！
+
+然后调用号码接口
+
+curl 'https://web.tqsms.xyz/api/phone/getPhone' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \
+  -H 'cache-control: no-cache' \
+  -H 'content-type: application/json' \
+  -H 'origin: https://web.tqsms.xyz' \
+  -H 'pragma: no-cache' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://web.tqsms.xyz/' \
+  -H 'sec-ch-ua: "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0' \
+  -H 'x-device-fingerprint: caadfebb830b2d9879bfb1735d02ea14' \
+  -H 'x-device-nonce: fafe9ecf-8899-4e7c-8a42-a750q2ecebae' \
+  -H 'x-device-sign: e2af54a78806797098f464d9d94c2dba' \
+  -H 'x-device-timestamp: 1773328531390' \
+  -H 'x-token: 222858-*-ae82b06d-c473-48bc-9f54-e1ea68e5dcb4' \
+  --data-raw '{"projectName":"Google / Gmail (谷歌)----金币：1.59----可用：[hkg]+852/香港/hongkong 在线: 429 可用: 426----channelId:1613871117276024844","operator":"0","phone_num":"","scope":"","scope_black":"","code":"hkg-11100-n6425","projectId":null,"address":"","channelId":"1613871117276024844"}'
+
+此号码接口暂时写死，然后接口会返回
+
+{
+    "data": {
+        "city": null,
+        "code": 0,
+        "desc": null,
+        "lastMsgTime": null,
+        "message": "获取成功",
+        "minute": null,
+        "mobile": "(852)98477634",
+        "phoneId": "6211EC40AA55ECFD100D33CCF5BF435A2A77638B485FE9D8",
+        "province": "香港",
+        "refreshTime": 5000,
+        "smsTask": {
+            "createTime": null,
+            "endTime": null,
+            "id": 10189468,
+            "phoneNo": "(852)98477634",
+            "projectId": 1457894,
+            "startTime": "2026-03-12 23:15:32",
+            "status": 0,
+            "uid": 222858,
+            "updateTime": null
+        },
+        "sp": null
+    },
+    "msg": "操作成功",
+    "status": 200,
+    "success": true,
+    "t": "8e8cd617-3b5d-498a-8416-00f4a9c42e0b"
+}
+
+其中 data.mobile就是手机号，()里面的是国家号
+
+然后填入手机号输入框，元素是：
+
+<input type="tel" value="" id="phoneNumberId" jsname="YPqjbf" class="VfPpkd-fmcmS-wGMbrd KCpNnf" jsaction="focus:AHmuwe;blur:O22p3e;input:YPqjbf; mousedown:UX7yZ; mouseup:lbsD7e; pointerdown:QJflP; pointerup:HxTfMe; touchstart:p6p2H; touchend:yfqBxc;" aria-describedby=" i8" aria-labelledby="i13" autocomplete="off">
+
+填入的格式是：+国家号 手机号，比如：+852 98477634。
+
+请注意国家号和区号之间有空格
+
+然后接口轮询
+
+curl ^"https://web.tqsms.xyz/api/code/getCode^" ^
+  -H ^"accept: application/json, text/plain, */*^" ^
+  -H ^"accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6^" ^
+  -H ^"content-type: application/json^" ^
+  -H ^"origin: https://web.tqsms.xyz^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://web.tqsms.xyz/^" ^
+  -H ^"sec-ch-ua: ^\^"Not:A-Brand^\^";v=^\^"99^\^", ^\^"Microsoft Edge^\^";v=^\^"145^\^", ^\^"Chromium^\^";v=^\^"145^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0^" ^
+  -H ^"x-device-fingerprint: caadfebb830b2d9879bfb1735d02ea14^" ^
+  -H ^"x-device-nonce: 6fed172d-929a-43e3-bfc6-759bqe547185^" ^
+  -H ^"x-device-sign: 9da9acb36f179688f94b8e5e74a71e65^" ^
+  -H ^"x-device-timestamp: 1773328903385^" ^
+  -H ^"x-token: 222858-*-ae82b06d-c473-48bc-9f54-e1ea68e5dcb4^" ^
+  --data-raw ^"^{^\^"code^\^":^\^"hkg-11100-n6425^\^",^\^"projectId^\^":null,^\^"phoneNum^\^":^\^"(852)57257872^\^",^\^"channelId^\^":^\^"1613871117276024844^\^",^\^"phoneId^\^":^\^"6211EC40AA55ECFD110BB06AE0B5D49438BD04E35FA70507^\^"^}^"
+
+data-raw中的数据，需要改成获取手机号返回中的相应数据
+
+此接口会返回：
+
+{
+    "data": {
+        "code": "",
+        "lastGetTime": null,
+        "message": "暂无消息..",
+        "modle": null
+    },
+    "msg": "操作成功",
+    "status": 200,
+    "success": true,
+    "t": "5bfa334c-75cd-4464-a68b-d3b58a226ca0"
+}
+
+如果超过20次轮询没有收到验证码，那么说明此手机无法正常使用，那么需要跳转至
+
+https://mail.google.com，此时页面会自动跳转至：https://accounts.google.com/uplevelingstep/selection，也就是上面的“绑定手机”步骤，然后重复执行相同的操作
+
+直到接口返回了，验证码
+
+{
+    "data": {
+        "code": "262509",
+        "lastGetTime": null,
+        "message": "ok",
+        "modle": "G-262509 là m? xác minh Google c?a b?n. ??ng chia s? v?i b?t k? ai."
+    },
+    "msg": "操作成功",
+    "status": 200,
+    "success": true,
+    "t": "599f5f63-4801-46fc-ad4f-aaa035373916"
+}
+
+然后填入验证码，验证码输入框元素：
+
+<input type="tel" pattern="[0-9 ]*" class="whsOnd zHQkBf" jsname="YPqjbf" autocomplete="off" spellcheck="false" tabindex="0" aria-label="Nhập mã" aria-describedby="c0" name="pin" aria-disabled="false" autocapitalize="off" id="idvAnyPhonePin" autocorrect="off" dir="ltr" data-initial-dir="ltr" data-initial-value="262509" badinput="false">
+
+然后点击下一步，下一步元素：
+
+<button class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-k8QpJ VfPpkd-LgbsSe-OWXEXe-dgl2Hf nCP5yc AjY5Oe DuMIQc LQeN7 BqKGqe Jskylb TrZEUc lw1w4b" jscontroller="soHxf" jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef;mlnRJb:fLiPzd;" data-idom-class="nCP5yc AjY5Oe DuMIQc LQeN7 BqKGqe Jskylb TrZEUc lw1w4b" jsname="LgbsSe" type="button"><div class="VfPpkd-Jh9lGc"></div><div class="VfPpkd-J1Ukfc-LhBDec"></div><div class="VfPpkd-RLmnJb"></div><span jsname="V67aGc" class="VfPpkd-vQzf8d">Tiếp theo</span></button>
+
+### 寻找谷歌家庭组邮件
+
+此时页面会跳转至：https://mail.google.com/mail/u/0/
+
+请注意链接是否正确！
+
+点击当前页面table元素中的第二个 tr，有可能不是第二个，到那时邮件的标题中会有一个问号 ?，可以判断问号，但是不要判断文字，因为账号的语言可能不一样
+
+下面是邮件元素：
+
+<tr class="zA zE" jscontroller="ZdOxDb" jsaction="Tnvr6c:RNc9jf;PG1zDd:eyrEaf;WGbBt:iplnUc;nVvxM:iplnUc;" jsmodel="nXDxbd" id=":2j" tabindex="-1" role="row" aria-labelledby=":2k" draggable="false" jslog="18406; u014N:xr6bB,SYhH9d; cQYSPc:1; 1:WyIjdGhyZWFkLWY6MTg1OTQ2ODMzNDg5MzM5MjcyOSIsMSxudWxsLC05ODMyNTgzNjQsW251bGwsWzQwNTEwNDA3LDQwNTEwMzcyXV0sMSxudWxsLDAsbnVsbCxudWxsLG51bGwsbnVsbCxudWxsLG51bGwsbnVsbCxudWxsLG51bGwsbnVsbCxudWxsLFszXSxudWxsLG51bGwsbnVsbCxudWxsLG51bGwsbnVsbCxudWxsLG51bGwsbnVsbCxudWxsLG51bGwsMCwwXQ..; 4:W10."><td class="PF xY"></td><td id=":2l" class="oZ-x3 xY" style="" data-tooltip="Select"><div id=":2m" class="oZ-jc T-Jo J-J5-Ji " role="checkbox" aria-labelledby=":2k" dir="ltr" aria-checked="false" tabindex="-1" jslog="202931; u014N:cOuCgd,Kr2w4b"><div class="T-Jo-auh"></div></div></td><td class="apU xY"><span id=":2n" class="aXw T-KT" aria-label="Not starred" role="button" data-tooltip="Not starred"><img class="T-KT-JX" src="images/cleardot.gif" alt="Not starred"></span></td><td class="yX xY ulKHrd " role="gridcell" tabindex="-1"><div id=":2k" class="afn">unread, <span class="bA4"><span translate="no" class="zF" email="families-noreply@google.com" name="Google" data-hovercard-id="families-noreply@google.com">Google</span></span>, <span class="bqe" data-thread-id="#thread-f:1859468334893392729" data-legacy-thread-id="19ce289944686359" data-legacy-last-message-id="19ce289944686359" data-legacy-last-non-draft-message-id="19ce289944686359">Tham gia nhóm gia đình của Kiara?</span>, <span class="bq3">10:53 PM</span>, Kiara Johnson muốn bạn tham gia nhóm gia đình của họ mungkhi245@gmail.com Xin chào khi! Bạn có thể tham gia nhóm gia đình của Kiara (kariziaricato965@gmail.com) để kết nối với gia đình của bạn trên.</div><div id=":2o" class="yW"><span class="bA4"><span translate="no" class="zF" email="families-noreply@google.com" name="Google" data-hovercard-id="families-noreply@google.com">Google</span></span></div></td><td id=":2p" tabindex="-1" class="xY a4W" role="gridcell"><div class="xS" role="link"><div class="xT"><div class="y6"><span id=":2r" class="bog"><span class="bqe" data-thread-id="#thread-f:1859468334893392729" data-legacy-thread-id="19ce289944686359" data-legacy-last-message-id="19ce289944686359" data-legacy-last-non-draft-message-id="19ce289944686359">Tham gia nhóm gia đình của Kiara?</span></span></div><span id=":2s" class="y2"><span class="Zt">&nbsp;-&nbsp;</span>Kiara Johnson muốn bạn tham gia nhóm gia đình của họ mungkhi245@gmail.com Xin chào khi! Bạn có thể tham gia nhóm gia đình của Kiara (kariziaricato965@gmail.com) để kết nối với gia đình của bạn trên</span></div></div></td><td class="byZ xY" role="gridcell" tabindex="-1"></td><td class="yf xY ">&nbsp;</td><td class="xW xY " role="gridcell" tabindex="-1"><span title="Thu, Mar 12, 2026, 10:53 PM" id=":2u" aria-label="Thu, Mar 12, 2026, 10:53 PM"><span class="bq3">10:53 PM</span></span></td><td class="bq4 xY"><ul class="bqY" id=":2v" role="toolbar"><li class="bqX brq" data-tooltip="Archive" jsaction="JqEhuc" jscontroller="pk1i4d" jslog="20281; u014N:xr6bB,cOuCgd,Kr2w4b; 1:WyIjdGhyZWFkLWY6MTg1OTQ2ODMzNDg5MzM5MjcyOSJd"></li><li class="bqX bru" data-tooltip="Delete" jsaction="zM6fo" jscontroller="pmCKac" jslog="20283; u014N:xr6bB,cOuCgd,Kr2w4b; 1:WyIjdGhyZWFkLWY6MTg1OTQ2ODMzNDg5MzM5MjcyOSJd"></li><li class="bqX brr" data-tooltip="Mark as read" jsaction="aUd46b" jscontroller="VtSflc" jslog="25471; u014N:xr6bB,cOuCgd,Kr2w4b; 1:WyIjdGhyZWFkLWY6MTg1OTQ2ODMzNDg5MzM5MjcyOSJd"></li><li class="bqX brv" data-tooltip="Snooze" jsaction="u4Fnue" jscontroller="PKSrle" jslog="20285; u014N:xr6bB,cOuCgd,Kr2w4b; 1:WyIjdGhyZWFkLWY6MTg1OTQ2ODMzNDg5MzM5MjcyOSJd"></li></ul></td><td class="xY"></td></tr>
+
+点击之后，url会变为，页面可能不会刷新，只是改变url和网页内容
+
+https://mail.google.com/mail/u/0/#inbox/XXXXXX此为邮件编码，
+
+请注意链接是否正确！
+
+然后点击邮件中的加入家庭组按钮，按钮元素：
+
+<a style="color:#fff;letter-spacing:0.25px;display:inline-block;text-align:center;text-decoration:none;font:500 14px 'Google Sans',Roboto,Helvetica,Arial,sans-serif;padding:8px 24px;background:#1a73e8;border-radius:4px;line-height:20px" href="https://notifications.googleapis.com/email/redirect?t=AFG8qyWW1_NbYGtFE72vIxEbL1K0eSnUTHLBDAmOzDw2dqTK4xW9MsjXEcIcrACEwzR7007Shrqxi3PhcqElV-bYvCLadAej0WBmP29O6Cdz1n3me3RpBCRWA0vwVyFie8YLc39EqXwY1zjotV7y3iatpVRMhObMXMkD1gTDzbtGV6Kzu0k4XISWPj6bu8pEOk_swzo5eeVUZ1a_jq8ln569njwiCcfWjrfCAJl8Yl_BCj1rH6BrhlAPAxv64cNZfSwZN18bOHGThazSfU6S92JrFgYO6TNHynZbrxKtMerv-FaGf6YaTA10SYjt19dJRafcKpdviSnYwzFe0HC6mJ4mPk6lohw&amp;r=eJxVjMsKwjAQAL9Gjw34ICCUKtVTLkWo4EnSGJPVbDbkgfTvJejFyxwGZmzOIe0Yk0pR8Tk1hsg43ShCdvi63hIlHTtFPoMvurW_5iERHOi_5kngWYiExIbRXCXvKcoZ3uLMg4iXmMdJ8HkaTFcy3lDfoeBifdQowS1PlS0Wb14WVpvt3lRRvx-j1D4X&amp;s=ALHZ2r7b_DEVm2CLsJjYBdp4mUIj" target="_blank" data-saferedirecturl="https://www.google.com/url?q=https://notifications.googleapis.com/email/redirect?t%3DAFG8qyWW1_NbYGtFE72vIxEbL1K0eSnUTHLBDAmOzDw2dqTK4xW9MsjXEcIcrACEwzR7007Shrqxi3PhcqElV-bYvCLadAej0WBmP29O6Cdz1n3me3RpBCRWA0vwVyFie8YLc39EqXwY1zjotV7y3iatpVRMhObMXMkD1gTDzbtGV6Kzu0k4XISWPj6bu8pEOk_swzo5eeVUZ1a_jq8ln569njwiCcfWjrfCAJl8Yl_BCj1rH6BrhlAPAxv64cNZfSwZN18bOHGThazSfU6S92JrFgYO6TNHynZbrxKtMerv-FaGf6YaTA10SYjt19dJRafcKpdviSnYwzFe0HC6mJ4mPk6lohw%26r%3DeJxVjMsKwjAQAL9Gjw34ICCUKtVTLkWo4EnSGJPVbDbkgfTvJejFyxwGZmzOIe0Yk0pR8Tk1hsg43ShCdvi63hIlHTtFPoMvurW_5iERHOi_5kngWYiExIbRXCXvKcoZ3uLMg4iXmMdJ8HkaTFcy3lDfoeBifdQowS1PlS0Wb14WVpvt3lRRvx-j1D4X%26s%3DALHZ2r7b_DEVm2CLsJjYBdp4mUIj&amp;source=gmail&amp;ust=1773415734819000&amp;usg=AOvVaw1gITE_QvFzUm1urKI-YJX2">Chấp nhận lời mời</a>
+
+此时，浏览器会新建窗口打开
+
+页面链接会是：
+
+https://myaccount.google.com/family/join/[PUgYa7CorayiwKR7pKrVrtUbK7ybPg：此为家庭组代码]?get参数列表
+
+然后点击加入家庭组按钮，按钮元素是：
+
+<button class="UywwFc-LgbsSe UywwFc-LgbsSe-OWXEXe-dgl2Hf UywwFc-StrnGf-YYd4I-VtOx3e wMI9H" jscontroller="O626Fe" jsaction="click:h5M12e(preventDefault=true);clickmod:h5M12e(preventDefault=true);pointerdown:FEiYhc;pointerup:mF5Elf;pointerenter:EX0mI;pointerleave:vpvbp;pointercancel:xyn4sd;contextmenu:xexox; focus:h06R8; blur:zjh6rb;mlnRJb:fLiPzd;" data-idom-class="wMI9H" jsname="Pr7Yme" type="submit"><span class="XjoK4b"></span><span class="MMvswb"><span class="OLCwg"></span></span><span class="UTNHae" jscontroller="LBaJxb" jsname="m9ZlFb" soy-skip="" ssk="6:RWVI5c"></span><span class="UywwFc-RLmnJb"></span><span class="UywwFc-kBDsod-Rtc0Jf UywwFc-kBDsod-Rtc0Jf-OWXEXe-M1Soyc" jsname="Xr1QTb"></span><span jsname="V67aGc" class="UywwFc-vQzf8d">Tham gia nhóm gia đình</span><span class="UywwFc-kBDsod-Rtc0Jf UywwFc-kBDsod-Rtc0Jf-OWXEXe-UbuQg" jsname="UkTUqb"></span></button>
+
+
+页面会跳转至，确定验证页面
+
+链接是：https://myaccount.google.com/family/join/success?get参数列表
+
+请注意链接是否正确！如果此处不是这个链接，那么直接标记子号为失败，从头开始执行下一个字号
+
+然后点击验证按钮，按钮元素是：
+
+<button class="UywwFc-LgbsSe UywwFc-LgbsSe-OWXEXe-dgl2Hf UywwFc-StrnGf-YYd4I-VtOx3e wMI9H" jscontroller="O626Fe" jsaction="click:h5M12e(preventDefault=true);clickmod:h5M12e(preventDefault=true);pointerdown:FEiYhc;pointerup:mF5Elf;pointerenter:EX0mI;pointerleave:vpvbp;pointercancel:xyn4sd;contextmenu:xexox; focus:h06R8; blur:zjh6rb;mlnRJb:fLiPzd;" data-idom-class="wMI9H" jsname="Pr7Yme" type="submit"><span class="XjoK4b"></span><span class="MMvswb"><span class="OLCwg"></span></span><span class="UTNHae" jscontroller="LBaJxb" jsname="m9ZlFb" soy-skip="" ssk="6:RWVI5c"></span><span class="UywwFc-RLmnJb"></span><span class="UywwFc-kBDsod-Rtc0Jf UywwFc-kBDsod-Rtc0Jf-OWXEXe-M1Soyc" jsname="Xr1QTb"></span><span jsname="V67aGc" class="UywwFc-vQzf8d">Xem Nhóm gia đình</span><span class="UywwFc-kBDsod-Rtc0Jf UywwFc-kBDsod-Rtc0Jf-OWXEXe-UbuQg" jsname="UkTUqb"></span></button>
+
+此时页面会跳转至家庭组详情页面
+
+链接是：https://myaccount.google.com/family/details
+
+### CPA面板获取Oauth授权链接
+
+curl请求
+
+curl 'http://103.30.76.230:8317/v0/management/antigravity-auth-url?is_webui=true' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \
+  -H 'Authorization: Bearer pucode' \
+  -H 'Proxy-Connection: keep-alive' \
+  -H 'Referer: http://103.30.76.230:8317/management.html' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0' \
+  --insecure
+
+然后接口返回
+
+{
+    "state": "4bc580fc33b63529200f939410111a4a",
+    "status": "ok",
+    "url": "https://accounts.google.com/o/oauth2/v2/auth?access_type=offline\u0026client_id=1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com\u0026prompt=consent\u0026redirect_uri=http%3A%2F%2Flocalhost%3A51121%2Foauth-callback\u0026response_type=code\u0026scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcclog+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fexperimentsandconfigs\u0026state=4bc580fc33b63529200f939410111a4a"
+}
+
+其中url就是授权链接。
+
+### 认证授权
+
+打开上方的链接：
+
+页面会跳转至：
+
+https://accounts.google.com/v3/signin/accountchooser?get 参数列表
+
+请注意URL是否正确！
+
+然后点击账户，一般是当前页面ul的第一个li，账户元素：
+
+<li class="aZvCDf ZRzegd W7Aapd zpCp3 SmR8"><div class="VV3oRb YZVTmd SmR8" role="link" tabindex="0" jsname="MBVUVe" data-authuser="-1" data-identifier="mungkhi245@gmail.com" data-ogid="111702214175846294705" data-item-index="0" data-button-type="multipleChoiceIdentifier"><div class="lPxAeb"><div class="LbOduc"><div class="JQ5tlb" aria-hidden="true"><img src="https://lh3.googleusercontent.com/-HdkneF9g7Tc/AAAAAAAAAAI/AAAAAAAAAAA/ALKGfkmVsmErVmN0ru4zoRoPCjamuWZnSg/s128-c/photo.jpg" alt="" class="MnFlu TrZEUc" data-atf="false" data-iml="2681.2999999970198"></div><div class="DOLDDf"><div class="pGzURd" jsname="V1ur5d" translate="no">khi mung</div><div class="yAlK0b" jsname="bQIQze" data-email="mungkhi245@gmail.com" translate="no">mungkhi245@gmail.com</div></div></div></div><div class="X5U5I" aria-hidden="true"><svg aria-hidden="true" class="Qk3oof" fill="currentColor" focusable="false" width="24px" height="24px" viewBox="0 0 24 24" xmlns="https://www.w3.org/2000/svg"><path d="M7 11v2h10v-2H7zm5-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path></svg></div></div></li>
+
+
+此时页面会跳转至，同意页面，链接是：https://accounts.google.com/signin/oauth/firstparty/nativeapp
+
+
+请注意URL是否正确！
+
+然后点击同意按钮，按钮元素：
+
+<button class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-INsAgc VfPpkd-LgbsSe-OWXEXe-dgl2Hf Rj2Mlf OLiIxf PDpWxe P62QJc LQeN7 BqKGqe pIzcPc TrZEUc lw1w4b" jscontroller="soHxf" jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef;mlnRJb:fLiPzd;" data-idom-class="Rj2Mlf OLiIxf PDpWxe P62QJc LQeN7 BqKGqe pIzcPc TrZEUc lw1w4b" jsname="LgbsSe" type="button" style="--mdc-ripple-fg-size: 104px; --mdc-ripple-fg-scale: 1.8128703004978315; --mdc-ripple-fg-translate-start: 68.39996337890625px, -37.60003662109375px; --mdc-ripple-fg-translate-end: 35px, -32px;"><div class="VfPpkd-Jh9lGc"></div><div class="VfPpkd-J1Ukfc-LhBDec"></div><div class="VfPpkd-RLmnJb"></div><span jsname="V67aGc" class="VfPpkd-vQzf8d">Đăng nhập</span></button>
+
+此时页面会跳转至 localhost的本地链接，
+
+http://localhost:51121/oauth-callback?get 参数列表。
+
+### CPA 添加回调
+
+curl请求
+
+curl 'http://103.30.76.230:8317/v0/management/oauth-callback' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \
+  -H 'Authorization: Bearer pucode' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://103.30.76.230:8317' \
+  -H 'Proxy-Connection: keep-alive' \
+  -H 'Referer: http://103.30.76.230:8317/management.html' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0' \
+  --data-raw '{"provider":"antigravity","redirect_url":"http://localhost:51121/oauth-callback?state=4bc580fc33b63529200f939410111a4a&iss=https://accounts.google.com&code=4/0AfrIepC-lDrBIMp7s0QUdOBVAeaEFsHqqxvyaGvTZd8VTzOIQBOQilelpl3QkmbEIVfogg&scope=email%20profile%20https://www.googleapis.com/auth/cloud-platform%20https://www.googleapis.com/auth/userinfo.email%20https://www.googleapis.com/auth/userinfo.profile%20https://www.googleapis.com/auth/cclog%20https://www.googleapis.com/auth/experimentsandconfigs%20openid&authuser=0&prompt=consent"}' \
+  --insecure
+
+成功，会返回
+
+{"status":"ok"}
+
+### 那么整个流程执行结束
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AntiAuto - 账号管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-[#0d1117] min-h-screen text-[13px] text-[#c9d1d9]" style="font-family:'Inter',system-ui,-apple-system,sans-serif">
+<div id="app" class="flex flex-col h-screen">
+
+  <!-- Top Bar -->
+  <header class="h-14 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between px-6 shrink-0 sticky top-0 z-40">
+    <div class="flex items-center gap-6">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <span class="text-[#e6edf3] font-bold text-[15px] tracking-wide select-none">AntiAuto</span>
+      </div>
+      <nav class="flex bg-[#0d1117] border border-[#30363d] rounded-lg p-0.5">
+        <a href="/" class="px-4 py-1.5 rounded-md text-[12px] font-medium bg-[#21262d] text-[#e6edf3]">账号管理</a>
+        <a href="/settings.html" class="px-4 py-1.5 rounded-md text-[12px] font-medium text-[#8b949e] hover:text-[#c9d1d9] transition">设置</a>
+      </nav>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="flex gap-3 text-[12px]">
+        <span class="flex items-center gap-1.5 text-[#8b949e]"><span class="w-1.5 h-1.5 rounded-full bg-[#58a6ff]"></span>母号 <b class="text-[#e6edf3]">{{masters.length}}</b></span>
+        <span class="flex items-center gap-1.5 text-[#8b949e]"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950]"></span>子号 <b class="text-[#e6edf3]">{{totalSubs}}</b></span>
+        <span class="flex items-center gap-1.5 text-[#8b949e]"><span class="w-1.5 h-1.5 rounded-full bg-[#d29922]"></span>CPA <b class="text-[#e6edf3]">{{cpaFiles.length}}</b></span>
+      </div>
+      <div class="w-px h-5 bg-[#30363d]"></div>
+      <button @click="refreshAllQuotas" :disabled="quotaLoading"
+              class="text-[12px] px-4 py-1.5 rounded-lg border transition"
+              :class="quotaLoading?'border-[#30363d] text-[#484f58] cursor-wait':'border-[#30363d] text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#21262d]'">
+        {{quotaLoading?'刷新中...':'刷新额度'}}
+      </button>
+      <button @click="showAddModal=true" class="text-[12px] font-medium bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-1.5 rounded-lg transition">+ 添加母号</button>
+    </div>
+  </header>
+
+  <!-- Global Quota -->
+  <div v-if="globalQuota" class="bg-[#161b22] border-b border-[#21262d] px-6 py-2.5">
+    <div class="flex items-center gap-8 mx-auto">
+      <span class="text-[11px] text-[#8b949e] uppercase tracking-widest font-semibold shrink-0">全局额度</span>
+      <div v-for="q in globalQuota" :key="q.name" class="flex items-center gap-2.5 flex-1">
+        <span class="text-[12px] text-[#8b949e] w-[80px] shrink-0">{{q.name}}</span>
+        <div class="flex-1 h-2 bg-[#21262d] rounded-full overflow-hidden">
+          <div class="h-full rounded-full transition-all duration-500" :class="barColor(q.avg)" :style="'width:'+Math.round(q.avg*100)+'%'"></div>
+        </div>
+        <span class="text-[12px] font-semibold w-[40px] text-right shrink-0" :class="barTextColor(q.avg)">{{Math.round(q.avg*100)}}%</span>
+      </div>
+      <span class="text-[11px] text-[#484f58] shrink-0">{{quotaSubCount}} 个子号</span>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="p-6 mx-auto">
+
+      <!-- Master Cards -->
+      <div v-if="masters.length" class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5">
+        <div v-for="m in masters" :key="m.id" class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden flex flex-col"
+             :class="m.weekly_limited?'ring-1 ring-orange-400':''">
+
+          <!-- Master Header -->
+          <div class="p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2.5 min-w-0 cursor-pointer group/master" @click="showMasterInfo(m)">
+                <div class="w-9 h-9 rounded-lg bg-[#1f6feb20] flex items-center justify-center text-[14px] font-bold text-[#58a6ff] shrink-0 group-hover/master:bg-[#1f6feb30] transition">{{m.email.charAt(0).toUpperCase()}}</div>
+                <div class="min-w-0">
+                  <div class="text-[#e6edf3] font-semibold text-[14px] truncate group-hover/master:text-[#58a6ff] transition">{{m.email}}</div>
+                  <div class="text-[11px] text-[#8b949e] mt-0.5 truncate">辅助: {{m.aux_email||'无'}} <span v-if="m.remark" class="text-[#8b949e]">· {{m.remark}}</span></div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span v-if="m.two_fa_link" @click="get2FA(m.id)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] px-2 py-1 rounded-lg font-bold cursor-pointer hover:bg-[#58a6ff25] transition select-none">2FA</span>
+                <span v-if="m.weekly_limited" class="text-[10px] text-[#d29922] bg-[#d2992215] px-2 py-1 rounded-lg font-bold animate-pulse">周限</span>
+                <span :class="expiryStatus(m).cls" class="text-[10px] font-semibold px-2 py-1 rounded-lg">{{expiryStatus(m).label}}</span>
+                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-1.5 text-center ml-1">
+                  <div class="text-[16px] font-bold leading-none" :class="m.used_subs>=5?'text-[#f85149]':'text-[#e6edf3]'">{{m.used_subs}}<span class="text-[#484f58] font-normal text-[12px]">/5</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quota Overview -->
+            <div v-if="getMasterQuotaOverview(m.id)" class="bg-[#0d1117] rounded-lg px-4 py-2.5 mb-3">
+              <div class="flex gap-5">
+                <div v-for="q in getMasterQuotaOverview(m.id)" :key="q.name" class="flex items-center gap-2 flex-1">
+                  <span class="text-[11px] text-[#8b949e] shrink-0">{{q.name}}</span>
+                  <div class="flex-1 h-[6px] bg-[#21262d] rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-500" :class="barColor(q.avg)" :style="'width:'+Math.round(q.avg*100)+'%'"></div>
+                  </div>
+                  <span class="text-[11px] font-semibold shrink-0" :class="barTextColor(q.avg)">{{Math.round(q.avg*100)}}%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2">
+              <button @click="openSubModal(m.id,'batch')" class="text-[11px] text-[#3fb950] bg-[#3fb95015] hover:bg-[#3fb95025] px-3.5 py-1.5 rounded-lg transition font-medium" :disabled="m.used_subs>=5">创建批次</button>
+              <button @click="openSubModal(m.id,'import')" class="text-[11px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-3.5 py-1.5 rounded-lg transition font-medium" :disabled="m.used_subs>=5">导入子号</button>
+              <div class="flex-1"></div>
+              <button @click="startEdit(m)" class="text-[11px] text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#21262d] px-2.5 py-1.5 rounded-lg transition">编辑</button>
+              <button @click="toggleWeeklyLimit(m)" class="text-[11px] px-2.5 py-1.5 rounded-lg transition" :class="m.weekly_limited?'text-[#d29922] hover:bg-[#d2992215]':'text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#21262d]'">{{m.weekly_limited?'解除周限':'周限'}}</button>
+              <button @click="delMaster(m.id)" class="text-[11px] text-[#484f58] hover:text-[#f85149] hover:bg-[#f8514915] px-2.5 py-1.5 rounded-lg transition">删除</button>
+            </div>
+          </div>
+
+          <!-- Batches for this master -->
+          <div v-for="b in getBatchesForMaster(m.id)" :key="b.id">
+            <!-- Batch Bar (hide for imported) -->
+            <div v-if="!(b.status==='finished' && !hasNonSuccess(b))" class="px-5 py-2.5 flex items-center justify-between bg-[#0d1117] border-t border-[#21262d]">
+              <div class="flex items-center gap-3 text-[12px]">
+                <span class="w-2 h-2 rounded-full" :class="batchDot(b.status)"></span>
+                <span class="font-medium" :class="batchColor(b.status)">{{batchLabel(b.status)}}</span>
+                <span class="text-[#484f58]">{{b.accounts.length}} 个子号</span>
+                <span v-if="b.status!=='finished'" class="ml-1">
+                  <span class="text-[#3fb950]">{{cnt(b,'success')}}</span><span class="text-[#30363d]"> / </span>
+                  <span class="text-[#f85149]">{{cnt(b,'failed')}}</span><span class="text-[#30363d]"> / </span>
+                  <span class="text-[#d29922]">{{cnt(b,'error')}}</span>
+                </span>
+              </div>
+              <div class="flex gap-2">
+                <template v-if="b.status!=='running'">
+                  <button v-if="b.status!=='finished' || hasNonSuccess(b)" @click="startBatch(b.id)" class="text-[11px] text-[#3fb950] bg-[#3fb95015] hover:bg-[#3fb95025] px-3 py-1 rounded-lg transition font-medium">启动</button>
+                  <button @click="deleteBatch(b.id)" class="text-[11px] text-[#484f58] hover:text-[#f85149] hover:bg-[#f8514915] px-3 py-1 rounded-lg transition">删除</button>
+                </template>
+                <span v-else class="text-[11px] text-[#58a6ff] animate-pulse font-medium py-1">运行中...</span>
+              </div>
+            </div>
+
+            <!-- Sub Account Rows -->
+            <div>
+              <div v-for="(a,i) in b.accounts" :key="i" class="px-5 py-3 border-t border-[#21262d] hover:bg-[#161b2240] transition bg-[#0d1117]">
+                <!-- Row 1: email + status/cpa (left) | actions (right) -->
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="font-mono text-[13px] text-[#c9d1d9] truncate w-[160px] shrink-0 cursor-pointer hover:text-[#58a6ff] transition" :title="a.email" @click.stop="showSubInfo(a)">{{a.email}}</span>
+                    <span class="inline-flex items-center gap-1 shrink-0">
+                      <span class="w-1.5 h-1.5 rounded-full" :class="dotClass(a.status)"></span>
+                      <span class="text-[11px]" :class="statusColor(a.status)">{{statusLabel(a.status)}}</span>
+                    </span>
+                    <template v-if="getCPAFile(a.email)">
+                      <span class="text-[10px] font-medium px-2 py-0.5 rounded-md cursor-pointer shrink-0" :class="cpaLabelClass(getCPAFile(a.email))"
+                            @click="getCPAFile(a.email).status==='error'&&showCPADetail(getCPAFile(a.email))">{{cpaStatusText(getCPAFile(a.email))}}</span>
+                    </template>
+                    <span v-else class="text-[10px] text-[#f85149] bg-[#f8514915] px-2 py-0.5 rounded-md shrink-0">无凭证</span>
+                  </div>
+                  <div class="flex gap-1.5 items-center shrink-0">
+                    <button v-if="a.status!=='success'" @click="setSuccess(b.id,i)" class="text-[10px] text-[#3fb950] hover:text-[#56d364] bg-[#3fb95015] hover:bg-[#3fb95025] px-2 py-1 rounded-md transition">设成功</button>
+                    <button @click="delAccount(b.id,i)" class="text-[10px] text-[#484f58] hover:text-[#f85149] bg-[#21262d] hover:bg-[#f8514915] px-2 py-1 rounded-md transition">删除</button>
+                  </div>
+                </div>
+                <!-- Row 2: quota (full width) -->
+                <div class="mt-2" v-if="quotas[a.email.toLowerCase()] || quotaLoadingSet[a.email.toLowerCase()] || (getCPAFile(a.email)&&getCPAFile(a.email).auth_index)">
+                  <div v-if="quotas[a.email.toLowerCase()]" class="flex gap-5">
+                    <div v-for="q in quotas[a.email.toLowerCase()]" :key="q.name" class="flex items-center gap-2 w-[200px]">
+                      <span class="text-[11px] text-[#8b949e]">{{q.name}}</span>
+                      <div class="w-[70px] h-[5px] bg-[#21262d] rounded-full overflow-hidden shrink-0">
+                        <div class="h-full rounded-full" :class="barColor(q.remaining_fraction)" :style="'width:'+Math.max(Math.round(q.remaining_fraction*100),2)+'%'"></div>
+                      </div>
+                      <span class="text-[11px] font-semibold" :class="barTextColor(q.remaining_fraction)">{{Math.round(q.remaining_fraction*100)}}%</span>
+                      <span v-if="q.reset_time" class="text-[10px] text-[#484f58] w-[38px] text-right shrink-0">{{fmtReset(q.reset_time)}}</span>
+                    </div>
+                  </div>
+                  <span v-else-if="quotaLoadingSet[a.email.toLowerCase()]" class="text-[11px] text-[#58a6ff]">查询中...</span>
+                  <span v-else @click="refreshSingleQuota(a.email)" class="text-[11px] text-[#484f58] hover:text-[#58a6ff] cursor-pointer transition">点击刷新额度</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No subs -->
+          <div v-if="!getSubsForMaster(m.id).length" class="bg-[#0d1117] px-5 py-8 text-center text-[#484f58] text-[12px] border-t border-[#21262d]">暂无子号，点击上方「创建批次」或「导入子号」</div>
+        </div>
+      </div>
+
+      <!-- Empty -->
+      <div v-else class="text-center py-32">
+        <div class="text-[#484f58] text-[14px] mb-2">暂无母号</div>
+        <div class="text-[#484f58] text-[12px]">点击右上角「+ 添加母号」开始</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Add Master Modal -->
+  <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center" @click.self="showAddModal=false">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative bg-[#161b22] rounded-xl border border-[#30363d] w-[500px] shadow-2xl">
+      <div class="px-5 py-4 border-b border-[#21262d] flex items-center justify-between">
+        <h3 class="text-[#e6edf3] font-semibold text-[15px]">添加母号</h3>
+        <button @click="showAddModal=false" class="text-[#484f58] hover:text-[#c9d1d9] text-xl leading-none transition">&times;</button>
+      </div>
+      <div class="px-5 py-4 space-y-4">
+        <div>
+          <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">母号信息 <span class="text-[#f85149]">*</span></label>
+          <input v-model="masterInput" @keyup.enter="addMaster"
+                 class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition font-mono"
+                 placeholder="邮箱----密码----辅助邮箱----2FA链接">
+          <p class="text-[10px] text-[#484f58] mt-1">用 ---- (四个横线) 分隔各字段</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">到期时间</label>
+            <input v-model="addExpiry" type="date" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition">
+          </div>
+          <div>
+            <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">备注</label>
+            <input v-model="addRemark" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="选填">
+          </div>
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-[#21262d] flex justify-end gap-2">
+        <button @click="showAddModal=false" class="bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-[12px] px-4 py-2 rounded-lg transition">取消</button>
+        <button @click="addMaster" class="bg-[#238636] hover:bg-[#2ea043] text-white text-[12px] font-medium px-5 py-2 rounded-lg transition">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Master Modal -->
+  <div v-if="editingId" class="fixed inset-0 z-50 flex items-center justify-center" @click.self="editingId=''">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative bg-[#161b22] rounded-xl border border-[#30363d] w-[400px] shadow-2xl">
+      <div class="px-5 py-4 border-b border-[#21262d] flex items-center justify-between">
+        <h3 class="text-[#e6edf3] font-semibold text-[15px]">编辑母号</h3>
+        <button @click="editingId=''" class="text-[#484f58] hover:text-[#c9d1d9] text-xl leading-none transition">&times;</button>
+      </div>
+      <div class="px-5 py-4 space-y-3">
+        <div>
+          <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">备注</label>
+          <input v-model="editRemark" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-[13px] text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="备注...">
+        </div>
+        <div>
+          <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">到期时间</label>
+          <input v-model="editExpiry" type="date" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-[13px] text-[#c9d1d9] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition">
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-[#21262d] flex justify-end gap-2">
+        <button @click="editingId=''" class="bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-[12px] px-4 py-2 rounded-lg transition">取消</button>
+        <button @click="saveEdit(editingId)" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white text-[12px] font-medium px-5 py-2 rounded-lg transition">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sub Modal: Create Batch / Import -->
+  <div v-if="subModal.show" class="fixed inset-0 z-50 flex items-center justify-center" @click.self="subModal.show=false">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative bg-[#161b22] rounded-xl border border-[#30363d] w-[520px] shadow-2xl">
+      <div class="px-5 py-4 border-b border-[#21262d] flex items-center justify-between">
+        <h3 class="text-[#e6edf3] font-semibold text-[15px]">{{subModal.type==='batch'?'创建自动化批次':'导入已配置子号'}}</h3>
+        <button @click="subModal.show=false" class="text-[#484f58] hover:text-[#c9d1d9] text-xl leading-none transition">&times;</button>
+      </div>
+      <div class="px-5 py-4 space-y-3">
+        <div v-if="subModal.type==='batch'">
+          <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">子号列表</label>
+          <textarea v-model="subModal.text" rows="5"
+            class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition resize-y"
+            placeholder="邮箱---密码---辅助邮箱---2FA密钥（每行一个）"></textarea>
+          <p class="text-[10px] text-[#484f58] mt-1">用 --- (三个横线) 分隔各字段</p>
+        </div>
+        <div v-else>
+          <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">子号列表</label>
+          <textarea v-model="subModal.text" rows="5"
+            class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition resize-y"
+            placeholder="邮箱---密码---辅助邮箱---2FA密钥（每行一个）"></textarea>
+          <p class="text-[10px] text-[#484f58] mt-1">格式同批次，用 --- 分隔。导入的子号直接标记为「成功」，不执行自动化</p>
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-[#21262d] flex justify-end gap-2">
+        <button @click="subModal.show=false" class="bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-[12px] px-4 py-2 rounded-lg transition">取消</button>
+        <button @click="submitSubModal" class="bg-[#238636] hover:bg-[#2ea043] text-white text-[12px] font-medium px-5 py-2 rounded-lg transition">
+          {{subModal.type==='batch'?'创建并启动':'导入'}}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CPA Detail Modal -->
+  <div v-if="cpaModal.show" class="fixed inset-0 z-50 flex items-center justify-center" @click.self="cpaModal.show=false">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative bg-[#161b22] rounded-xl border border-[#30363d] w-[520px] max-h-[70vh] flex flex-col shadow-2xl">
+      <div class="px-5 py-3 border-b border-[#21262d] flex items-center justify-between">
+        <div>
+          <h3 class="text-[#e6edf3] font-semibold text-[14px]">CPA 错误详情</h3>
+          <p class="text-[11px] text-[#484f58] mt-0.5 font-mono">{{cpaModal.email}}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded" :class="cpaModal.labelCls">{{cpaModal.statusText}}</span>
+          <button @click="cpaModal.show=false" class="text-[#484f58] hover:text-[#c9d1d9] text-lg transition">&times;</button>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5">
+        <pre class="text-[11px] leading-[1.7] whitespace-pre-wrap break-all font-mono rounded-lg bg-[#0d1117] border border-[#30363d] p-4" :class="cpaModal.jsonColor">{{cpaModal.json}}</pre>
+      </div>
+      <div class="px-5 py-3 border-t border-[#21262d] text-right">
+        <button @click="cpaModal.show=false" class="bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-[12px] px-4 py-1.5 rounded-lg transition">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Master Detail Modal -->
+  <div v-if="masterDetail.show" class="fixed inset-0 z-50 flex items-center justify-center" @click.self="masterDetail.show=false">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative bg-[#161b22] rounded-xl border border-[#30363d] w-[420px] shadow-2xl">
+      <div class="px-5 py-4 border-b border-[#21262d] flex items-center justify-between">
+        <h3 class="text-[#e6edf3] font-semibold text-[15px]">母号详情</h3>
+        <button @click="masterDetail.show=false" class="text-[#484f58] hover:text-[#c9d1d9] text-xl leading-none transition">&times;</button>
+      </div>
+      <div class="px-5 py-4 space-y-3">
+        <div class="flex items-center justify-between bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div>
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">邮箱</div>
+            <div class="text-[13px] text-[#e6edf3] font-mono">{{masterDetail.email}}</div>
+          </div>
+          <button @click="copyText(masterDetail.email)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-2.5 py-1 rounded-md transition font-medium">复制</button>
+        </div>
+        <div class="flex items-center justify-between bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div>
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">密码</div>
+            <div class="text-[13px] text-[#e6edf3] font-mono">{{masterDetail.password}}</div>
+          </div>
+          <button @click="copyText(masterDetail.password)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-2.5 py-1 rounded-md transition font-medium">复制</button>
+        </div>
+        <div class="flex items-center justify-between bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div>
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">辅助邮箱</div>
+            <div class="text-[13px] text-[#e6edf3] font-mono">{{masterDetail.aux_email||'无'}}</div>
+          </div>
+          <button v-if="masterDetail.aux_email" @click="copyText(masterDetail.aux_email)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-2.5 py-1 rounded-md transition font-medium">复制</button>
+        </div>
+        <div class="flex items-center justify-between bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div>
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">2FA 密钥</div>
+            <div class="text-[13px] font-mono" :class="masterDetail.two_fa_link?'text-[#e6edf3]':'text-[#484f58]'">{{masterDetail.two_fa_link||'未配置'}}</div>
+          </div>
+          <button v-if="masterDetail.two_fa_link" @click="copyText(masterDetail.two_fa_link)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-2.5 py-1 rounded-md transition font-medium">复制</button>
+        </div>
+        <div class="bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">备注</div>
+          <div class="text-[13px] text-[#c9d1d9]">{{masterDetail.remark}}</div>
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-[#21262d] flex items-center justify-between">
+        <button @click="copyMasterFull" class="text-[12px] text-[#3fb950] bg-[#3fb95015] hover:bg-[#3fb95025] border border-[#3fb95030] px-4 py-2 rounded-lg transition font-medium">一键复制全部</button>
+        <button @click="masterDetail.show=false" class="bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-[12px] px-4 py-2 rounded-lg transition">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sub Account Detail Modal -->
+  <div v-if="subDetail.show" class="fixed inset-0 z-50 flex items-center justify-center" @click.self="subDetail.show=false">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative bg-[#161b22] rounded-xl border border-[#30363d] w-[420px] shadow-2xl">
+      <div class="px-5 py-4 border-b border-[#21262d] flex items-center justify-between">
+        <h3 class="text-[#e6edf3] font-semibold text-[15px]">子号详情</h3>
+        <button @click="subDetail.show=false" class="text-[#484f58] hover:text-[#c9d1d9] text-xl leading-none transition">&times;</button>
+      </div>
+      <div class="px-5 py-4 space-y-3">
+        <div class="flex items-center justify-between bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div>
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">邮箱</div>
+            <div class="text-[13px] text-[#e6edf3] font-mono">{{subDetail.email}}</div>
+          </div>
+          <button @click="copyText(subDetail.email)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-2.5 py-1 rounded-md transition font-medium">复制</button>
+        </div>
+        <div class="flex items-center justify-between bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div>
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">密码</div>
+            <div class="text-[13px] text-[#e6edf3] font-mono">{{subDetail.password}}</div>
+          </div>
+          <button @click="copyText(subDetail.password)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-2.5 py-1 rounded-md transition font-medium">复制</button>
+        </div>
+        <div class="flex items-center justify-between bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div>
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">辅助邮箱</div>
+            <div class="text-[13px] text-[#e6edf3] font-mono">{{subDetail.aux_email||'无'}}</div>
+          </div>
+          <button v-if="subDetail.aux_email" @click="copyText(subDetail.aux_email)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-2.5 py-1 rounded-md transition font-medium">复制</button>
+        </div>
+        <div class="flex items-center justify-between bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div>
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">2FA 密钥</div>
+            <div class="text-[13px] font-mono" :class="subDetail.two_fa?'text-[#e6edf3]':'text-[#484f58]'">{{subDetail.two_fa||'未配置'}}</div>
+          </div>
+          <button v-if="subDetail.two_fa" @click="copyText(subDetail.two_fa)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-2.5 py-1 rounded-md transition font-medium">复制</button>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">状态</div>
+            <div class="text-[13px] font-medium" :class="statusColor(subDetail.status==='成功'?'success':subDetail.status==='失败'?'failed':subDetail.status==='异常'?'error':'pending')">{{subDetail.status}}</div>
+          </div>
+          <div class="bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">当前步骤</div>
+            <div class="text-[13px] text-[#c9d1d9]">{{subDetail.step}}</div>
+          </div>
+        </div>
+        <div class="bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+          <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">手机绑定</div>
+          <div class="text-[13px] font-medium" :class="subDetail.phone_bound?'text-[#3fb950]':'text-[#484f58]'">{{subDetail.phone_bound?'已绑定':'未绑定'}}</div>
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t border-[#21262d] flex items-center justify-between">
+        <button @click="copySubFull" class="text-[12px] text-[#3fb950] bg-[#3fb95015] hover:bg-[#3fb95025] border border-[#3fb95030] px-4 py-2 rounded-lg transition font-medium">一键复制全部</button>
+        <button @click="subDetail.show=false" class="bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-[12px] px-4 py-2 rounded-lg transition">关闭</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/index.js"></script>
+<style>
+.swal2-popup.swal2-toast{font-size:13px!important}
+</style>
+</body>
+</html>

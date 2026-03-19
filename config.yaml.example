@@ -1,0 +1,10 @@
+proxy: http://127.0.0.1:10808
+proxy_enabled: false
+cpa_token: your-cpa-token
+cpa_api_url: http://127.0.0.1:8317
+sms_token: your-sms-token
+sms_channel_id: "your-channel-id"
+sms_code: your-sms-code
+headless: false
+concurrency: 1
+port: 8080
