@@ -95,7 +95,7 @@ func callbackWorker() {
 			lastErr = err
 			log.Printf("OAuth Callback 重试 %d/3: %v", attempt, err)
 			if attempt < 3 {
-				time.Sleep(3 * time.Second)
+				time.Sleep(5 * time.Second)
 			}
 		}
 		// Wait a bit before processing the next one

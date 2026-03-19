@@ -107,17 +107,21 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 		return fmt.Errorf("could not create page: %v", err)
 	}
 
-	// Intercept OAuth callback
-	oauthCallbackOK := make(chan bool, 1)
+	// Intercept OAuth callback — channel carries: true=success, false=failed
+	oauthCallbackCh := make(chan bool, 1)
 	bctx.OnRequest(func(req playwright.Request) {
 		reqURL := req.URL()
 		if strings.HasPrefix(reqURL, "http://localhost:51121/oauth-callback") {
 			if cbErr := api.SendOAuthCallback(reqURL); cbErr != nil {
 				L.Fail(email, fmt.Sprintf("OAuth Callback 失败: %v", cbErr))
+				select {
+				case oauthCallbackCh <- false:
+				default:
+				}
 			} else {
 				L.OK(email, "OAuth Callback 已发送")
 				select {
-				case oauthCallbackOK <- true:
+				case oauthCallbackCh <- true:
 				default:
 				}
 			}
@@ -133,15 +137,48 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 	}
 
 	// ─── Step 2: OAuth → CPA check → (phone bind / retry) loop ───
-	const maxCPACycles = 3     // total OAuth→CPA cycles
-	const maxCPAPolls = 10     // polls per cycle (10 × 3s = 30s max wait)
-	const cpaPollInterval = 3  // seconds between polls
+	const maxCPACycles = 3    // total OAuth→CPA cycles
+	const maxCPAPolls = 10    // polls per cycle (10 × 3s = 30s max wait)
+	const cpaPollInterval = 3 // seconds between polls
+	const maxOAuthRetries = 3 // retries if callback fails
+
+	// Check if phone is already bound — if so, just do one OAuth and done
+	phoneBound := false
+	if b := db.DB.GetBatch(batchID); b != nil && idx < len(b.Accounts) {
+		phoneBound = b.Accounts[idx].PhoneBound
+	}
+
+	// OAuth with callback-failure retry
+	doOAuthWithRetry := func(label string) error {
+		for oauthRetry := 1; oauthRetry <= maxOAuthRetries; oauthRetry++ {
+			updateStatus(batchID, idx, db.StatusRunning, "oauth", "")
+			if oauthRetry > 1 {
+				L.Warn(email, fmt.Sprintf("%s 第 %d/%d 次重试...", label, oauthRetry, maxOAuthRetries))
+				time.Sleep(5 * time.Second)
+			} else {
+				L.Step(email, label)
+			}
+			err := doOAuthStart(email, account, bctx, oauthCallbackCh)
+			if err == nil {
+				return nil
+			}
+			L.Warn(email, fmt.Sprintf("%s 失败: %v", label, err))
+			if oauthRetry == maxOAuthRetries {
+				return fmt.Errorf("%s failed after %d retries: %w", label, maxOAuthRetries, err)
+			}
+		}
+		return nil
+	}
 
 	// First OAuth
-	updateStatus(batchID, idx, db.StatusRunning, "oauth", "")
-	L.Step(email, "开始 OAuth 授权...")
-	if err := doOAuthStart(email, account, bctx, oauthCallbackOK); err != nil {
+	if err := doOAuthWithRetry("OAuth 授权"); err != nil {
 		return err
+	}
+
+	// If phone already bound, we're done — no need for CPA check
+	if phoneBound {
+		L.OK(email, "手机已绑定, 无需 CPA 检测, 完成")
+		return nil
 	}
 
 	for cycle := 0; cycle < maxCPACycles; cycle++ {
@@ -171,8 +208,8 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 				continue
 
 			case api.CPAErrorNoURL:
-				L.Fail(email, "CPA 返回错误但无手机绑定链接 (账号可能已死/额度不足)")
-				return fmt.Errorf("cpa_check: account has error without phone binding URL")
+				L.Info(email, fmt.Sprintf("CPA 有错误但无绑定链接, 继续轮询 (%d/%d)", poll+1, maxCPAPolls))
+				continue
 
 			case api.CPANotFound:
 				L.Info(email, fmt.Sprintf("CPA 未找到账号, 等待中 (%d/%d)", poll+1, maxCPAPolls))
@@ -186,8 +223,6 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 			// ─── Phone binding needed ───
 			updateStatus(batchID, idx, db.StatusRunning, "phone_bind", "")
 			if err := doPhoneBind(email, page, validationURL, batchID, idx); err != nil {
-				// Phone bind failed — but we already have the URL, just report error
-				// The outer retry loop in runAutomationForAccount will handle retries
 				return fmt.Errorf("phone_bind failed: %w", err)
 			}
 
@@ -199,24 +234,11 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 			}
 			time.Sleep(3 * time.Second)
 
-			for oauthRetry := 1; oauthRetry <= 3; oauthRetry++ {
-				updateStatus(batchID, idx, db.StatusRunning, "oauth_redo", "")
-				if oauthRetry > 1 {
-					L.Warn(email, fmt.Sprintf("最终 OAuth 第 %d/3 次重试...", oauthRetry))
-					time.Sleep(5 * time.Second)
-				} else {
-					L.Step(email, "重新 OAuth 授权 (最终)...")
-				}
-				if err := doOAuthStart(email, account, bctx, oauthCallbackOK); err != nil {
-					L.Warn(email, fmt.Sprintf("最终 OAuth 失败: %v", err))
-					if oauthRetry == 3 {
-						return fmt.Errorf("final oauth failed after 3 retries: %w", err)
-					}
-					continue
-				}
-				L.OK(email, "手机绑定 + 重新授权完成")
-				return nil
+			if err := doOAuthWithRetry("重新 OAuth 授权 (最终)"); err != nil {
+				return err
 			}
+			L.OK(email, "手机绑定 + 重新授权完成")
+			return nil
 		} // end if validationURL != ""
 
 		// ─── Active but no result after all polls → delete CPA, re-OAuth ───
@@ -228,9 +250,7 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 			}
 			time.Sleep(3 * time.Second)
 
-			updateStatus(batchID, idx, db.StatusRunning, "oauth_redo", "")
-			L.Step(email, fmt.Sprintf("重新 OAuth 授权 (第 %d 轮)...", cycle+2))
-			if err := doOAuthStart(email, account, bctx, oauthCallbackOK); err != nil {
+			if err := doOAuthWithRetry(fmt.Sprintf("重新 OAuth 授权 (第 %d 轮)", cycle+2)); err != nil {
 				return err
 			}
 		}
@@ -433,7 +453,7 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 
 // ─── OAuth Start Logic ──────────────────────────────────────────
 
-func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserContext, oauthCallbackOK chan bool) error {
+func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserContext, oauthCallbackCh chan bool) error {
 	oauthURL, err := api.GetOAuthURL()
 	if err != nil {
 		return fmt.Errorf("oauth_start: get oauth url failed: %w", err)
@@ -491,9 +511,12 @@ func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserCo
 		if strings.Contains(currentURL, "localhost:51121/oauth-callback") {
 			L.OK(email, "OAuth 回调已触发")
 			select {
-			case <-oauthCallbackOK:
-				L.OK(email, "OAuth 回调确认成功")
-				return nil
+			case ok := <-oauthCallbackCh:
+				if ok {
+					L.OK(email, "OAuth 回调确认成功")
+					return nil
+				}
+				return fmt.Errorf("oauth_start: callback submission failed")
 			case <-time.After(30 * time.Second):
 				return fmt.Errorf("oauth_start: oauth callback confirmation timeout")
 			}
@@ -587,9 +610,12 @@ func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserCo
 	// Wait for callback
 	L.Info(email, "等待 OAuth 回调确认...")
 	select {
-	case <-oauthCallbackOK:
-		L.OK(email, "OAuth 授权完成")
-		return nil
+	case ok := <-oauthCallbackCh:
+		if ok {
+			L.OK(email, "OAuth 授权完成")
+			return nil
+		}
+		return fmt.Errorf("oauth_start: callback submission failed")
 	case <-time.After(30 * time.Second):
 		return fmt.Errorf("oauth_start: oauth callback confirmation timeout")
 	}
