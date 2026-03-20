@@ -12,10 +12,32 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"antiauto/config"
 )
+
+// ─── Proxy-aware HTTP client for Google API calls ────────────────
+
+var (
+	oauthClient     *http.Client
+	oauthClientOnce sync.Once
+)
+
+func getOAuthClient() *http.Client {
+	oauthClientOnce.Do(func() {
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		cfg := config.Get()
+		if cfg.ProxyEnabled && cfg.Proxy != "" {
+			if proxyURL, err := url.Parse(cfg.Proxy); err == nil {
+				transport.Proxy = http.ProxyURL(proxyURL)
+			}
+		}
+		oauthClient = &http.Client{Timeout: 30 * time.Second, Transport: transport}
+	})
+	return oauthClient
+}
 
 // ─── Antigravity OAuth Constants ─────────────────────────────────
 
@@ -82,7 +104,7 @@ func ExchangeCodeForTokens(code string) (*OAuthTokens, error) {
 		"grant_type":    {"authorization_code"},
 	}
 
-	resp, err := http.PostForm(oauthTokenURL, data)
+	resp, err := getOAuthClient().PostForm(oauthTokenURL, data)
 	if err != nil {
 		return nil, fmt.Errorf("token exchange request failed: %w", err)
 	}
@@ -115,7 +137,7 @@ func FetchUserEmail(accessToken string) (string, error) {
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := httpClient.Do(req)
+	resp, err := getOAuthClient().Do(req)
 	if err != nil {
 		return "", fmt.Errorf("userinfo request failed: %w", err)
 	}
@@ -162,7 +184,7 @@ func FetchProjectID(accessToken string) (string, error) {
 		req.Header.Set(k, v)
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := getOAuthClient().Do(req)
 	if err != nil {
 		return "", fmt.Errorf("loadCodeAssist failed: %w", err)
 	}
@@ -214,7 +236,7 @@ func FetchProjectID(accessToken string) (string, error) {
 			req.Header.Set(k, v)
 		}
 
-		resp, err := httpClient.Do(req)
+		resp, err := getOAuthClient().Do(req)
 		if err != nil {
 			continue
 		}
