@@ -318,6 +318,56 @@ func SaveAuthFile(tokens *OAuthTokens, email, projectID string) error {
 	return nil
 }
 
+// UploadAuthFileToCPA uploads a credential JSON file to CPA via multipart form upload.
+func UploadAuthFileToCPA(jsonData []byte, filename string) error {
+	cfg := config.Get()
+	if cfg.CPAAPIURL == "" {
+		return fmt.Errorf("CPA API URL 未配置")
+	}
+
+	apiURL := fmt.Sprintf("%s/v0/management/auth-files", cfg.CPAAPIURL)
+
+	// Build multipart body
+	boundary := fmt.Sprintf("----GoFormBoundary%d", time.Now().UnixNano())
+	var body strings.Builder
+	body.WriteString("--" + boundary + "\r\n")
+	body.WriteString(fmt.Sprintf("Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n", filename))
+	body.WriteString("Content-Type: application/json\r\n\r\n")
+	body.Write(jsonData)
+	body.WriteString("\r\n--" + boundary + "--\r\n")
+
+	req, err := http.NewRequest("POST", apiURL, strings.NewReader(body.String()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.CPAToken))
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Origin", cfg.CPAAPIURL)
+	req.Header.Set("Referer", fmt.Sprintf("%s/management.html", cfg.CPAAPIURL))
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("上传请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+
+	var result struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return fmt.Errorf("解析上传响应失败: %w (body: %s)", err, string(respBody))
+	}
+
+	if result.Status != "ok" {
+		return fmt.Errorf("上传失败: %s", string(respBody))
+	}
+
+	return nil
+}
+
 // ─── Complete OAuth Flow ─────────────────────────────────────────
 
 // CompleteOAuthFlow takes an authorization code, exchanges it for tokens,
@@ -344,9 +394,36 @@ func CompleteOAuthFlow(code string) (string, error) {
 		projectID = ""
 	}
 
-	// Step 4: Save credential file
+	// Step 4: Save credential file locally
 	if err := SaveAuthFile(tokens, email, projectID); err != nil {
 		return email, fmt.Errorf("save auth file: %w", err)
+	}
+
+	// Step 5: Upload credential to CPA
+	now := time.Now()
+	expiry := now.Add(time.Duration(tokens.ExpiresIn) * time.Second)
+	cred := AntigravityCredential{
+		Type:         "antigravity",
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+		ExpiresIn:    tokens.ExpiresIn,
+		Timestamp:    now.UnixMilli(),
+		Expired:      expiry.UTC().Format("2006-01-02T15:04:05Z"),
+		Email:        email,
+		ProjectID:    projectID,
+		Disabled:     false,
+	}
+	credJSON, _ := json.Marshal(cred)
+
+	filename := "antigravity.json"
+	if email != "" {
+		filename = fmt.Sprintf("antigravity-%s.json", email)
+	}
+
+	if err := UploadAuthFileToCPA(credJSON, filename); err != nil {
+		log.Printf("[%s] 凭证上传 CPA 失败: %v", email, err)
+	} else {
+		log.Printf("[%s] 凭证已上传 CPA", email)
 	}
 
 	log.Printf("[%s] OAuth 完成: project=%s", email, projectID)
