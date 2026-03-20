@@ -712,7 +712,7 @@ func doPhoneBind(email string, page playwright.Page, validationURL string, batch
 			if strings.Contains(currentURL, "/challenge/iap") {
 				enteredPhoneFlow = true
 				L.Info(email, "检测到手机号输入页面...")
-				if err := handlePhoneInput(email, page); err != nil {
+				if err := handlePhoneInput(email, page, validationURL); err != nil {
 					L.Warn(email, fmt.Sprintf("手机号输入处理失败: %v", err))
 					break
 				}
@@ -740,42 +740,88 @@ func doPhoneBind(email string, page playwright.Page, validationURL string, batch
 	return fmt.Errorf("phone_bind: failed after %d retries", maxRetries)
 }
 
-func handlePhoneInput(email string, page playwright.Page) error {
-	L.Info(email, "获取手机号码...")
-	formattedPhone, rawPhone, phoneID, err := api.GetPhoneNumber()
-	if err != nil {
-		return fmt.Errorf("get phone number failed: %w", err)
-	}
-	L.Info(email, fmt.Sprintf("获取到手机号: %s", formattedPhone))
+func handlePhoneInput(email string, page playwright.Page, validationURL string) error {
+	const maxPhoneRetries = 3
 
-	phoneInput := page.Locator(`input[type="tel"]`).First()
-	if err := phoneInput.Fill(formattedPhone); err != nil {
-		return fmt.Errorf("fill phone number failed: %w", err)
+	for phoneAttempt := 1; phoneAttempt <= maxPhoneRetries; phoneAttempt++ {
+		if phoneAttempt > 1 {
+			L.Warn(email, fmt.Sprintf("换号重试 %d/%d, 重新导航到验证页...", phoneAttempt, maxPhoneRetries))
+			// Re-navigate to validation URL to get a fresh phone input page
+			if _, err := page.Goto(validationURL, playwright.PageGotoOptions{
+				Timeout: playwright.Float(60000),
+			}); err != nil {
+				L.Warn(email, fmt.Sprintf("重新导航失败: %v", err))
+				continue
+			}
+			time.Sleep(5 * time.Second)
+
+			// Wait for /challenge/iap page again
+			foundIAP := false
+			for w := 0; w < 20; w++ {
+				curURL := page.URL()
+				if strings.Contains(curURL, "/challenge/iap") {
+					foundIAP = true
+					break
+				}
+				if strings.Contains(curURL, "/uplevelingstep/selection") {
+					stepOption := page.Locator(`div[data-step-type="1"]`).First()
+					stepOption.Click()
+				}
+				time.Sleep(2 * time.Second)
+			}
+			if !foundIAP {
+				L.Warn(email, "重新导航后未到达手机号输入页")
+				continue
+			}
+		}
+
+		L.Info(email, "获取手机号码...")
+		formattedPhone, rawPhone, phoneID, err := api.GetPhoneNumber()
+		if err != nil {
+			L.Warn(email, fmt.Sprintf("获取手机号失败: %v", err))
+			continue
+		}
+		L.Info(email, fmt.Sprintf("获取到手机号: %s", formattedPhone))
+
+		phoneInput := page.Locator(`input[type="tel"]`).First()
+		if err := phoneInput.Fill(formattedPhone); err != nil {
+			api.ReleasePhone(rawPhone)
+			L.Warn(email, fmt.Sprintf("填入手机号失败: %v", err))
+			continue
+		}
+
+		nextBtn := page.Locator(`button[jsname="LgbsSe"]`)
+		if err := nextBtn.Last().Click(); err != nil {
+			api.ReleasePhone(rawPhone)
+			L.Warn(email, fmt.Sprintf("点击发送短信按钮失败: %v", err))
+			continue
+		}
+		time.Sleep(5 * time.Second)
+
+		L.Info(email, "等待短信验证码...")
+		smsCode, err := api.GetSMSCode(rawPhone, phoneID)
+		if err != nil {
+			L.Warn(email, fmt.Sprintf("获取验证码失败: %v, 释放手机号并重试", err))
+			api.ReleasePhone(rawPhone)
+			continue
+		}
+		L.Info(email, fmt.Sprintf("获取到验证码: %s", smsCode))
+
+		codeInput := page.Locator(`input[type="tel"]`).First()
+		if err := codeInput.Fill(smsCode); err != nil {
+			return fmt.Errorf("fill SMS code failed: %w", err)
+		}
+
+		verifyBtn := page.Locator(`button[jsname="LgbsSe"]`)
+		if err := verifyBtn.Last().Click(); err != nil {
+			return fmt.Errorf("click verify button failed: %w", err)
+		}
+		time.Sleep(5 * time.Second)
+
+		return nil // success
 	}
 
-	nextBtn := page.Locator(`button[jsname="LgbsSe"]`)
-	if err := nextBtn.Last().Click(); err != nil {
-		return fmt.Errorf("click send SMS button failed: %w", err)
-	}
-	time.Sleep(5 * time.Second)
-
-	L.Info(email, "等待短信验证码...")
-	smsCode, err := api.GetSMSCode(rawPhone, phoneID)
-	if err != nil {
-		return fmt.Errorf("get SMS code failed: %w", err)
-	}
-	L.Info(email, fmt.Sprintf("获取到验证码: %s", smsCode))
-
-	codeInput := page.Locator(`input[type="tel"]`).First()
-	if err := codeInput.Fill(smsCode); err != nil {
-		return fmt.Errorf("fill SMS code failed: %w", err)
-	}
-
-	verifyBtn := page.Locator(`button[jsname="LgbsSe"]`)
-	if err := verifyBtn.Last().Click(); err != nil {
-		return fmt.Errorf("click verify button failed: %w", err)
-	}
-	time.Sleep(5 * time.Second)
+	return fmt.Errorf("手机号验证失败: %d 次换号均未收到验证码", maxPhoneRetries)
 
 	return nil
 }
