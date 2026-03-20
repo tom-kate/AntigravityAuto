@@ -795,7 +795,7 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 
 		// Manual check: mark and skip, no retry
 		if err == errManualCheck {
-			updateStatus(batchID, idx, db.StatusError, "manual_check", "CPA 未返回手机绑定链接, 需人工确认")
+			updateStatus(batchID, idx, db.StatusError, "manual_check", "CPA 未返回手机绑定链接, 等待人工绑定")
 			return
 		}
 

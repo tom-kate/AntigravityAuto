@@ -116,27 +116,6 @@
 
           <!-- Batches for this master -->
           <div v-for="b in getBatchesForMaster(m.id)" :key="b.id">
-            <!-- Batch Bar (hide for imported) -->
-            <div v-if="!(b.status==='finished' && !hasNonSuccess(b))" class="px-5 py-2.5 flex items-center justify-between bg-[#0d1117] border-t border-[#21262d]">
-              <div class="flex items-center gap-3 text-[12px]">
-                <span class="w-2 h-2 rounded-full" :class="batchDot(b.status)"></span>
-                <span class="font-medium" :class="batchColor(b.status)">{{batchLabel(b.status)}}</span>
-                <span class="text-[#484f58]">{{b.accounts.length}} 个子号</span>
-                <span v-if="b.status!=='finished'" class="ml-1">
-                  <span class="text-[#3fb950]">{{cnt(b,'success')}}</span><span class="text-[#30363d]"> / </span>
-                  <span class="text-[#f85149]">{{cnt(b,'failed')}}</span><span class="text-[#30363d]"> / </span>
-                  <span class="text-[#d29922]">{{cnt(b,'error')}}</span>
-                </span>
-              </div>
-              <div class="flex gap-2">
-                <template v-if="b.status!=='running'">
-                  <button v-if="b.status!=='finished' || hasNonSuccess(b)" @click="startBatch(b.id)" class="text-[11px] text-[#3fb950] bg-[#3fb95015] hover:bg-[#3fb95025] px-3 py-1 rounded-lg transition font-medium">启动</button>
-                  <button @click="deleteBatch(b.id)" class="text-[11px] text-[#484f58] hover:text-[#f85149] hover:bg-[#f8514915] px-3 py-1 rounded-lg transition">删除</button>
-                </template>
-                <span v-else class="text-[11px] text-[#58a6ff] animate-pulse font-medium py-1">运行中...</span>
-              </div>
-            </div>
-
             <!-- Sub Account Rows -->
             <div>
               <div v-for="(a,i) in b.accounts" :key="i" class="px-5 py-3 border-t border-[#21262d] hover:bg-[#161b2240] transition bg-[#0d1117]">
