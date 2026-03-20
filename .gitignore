@@ -24,3 +24,6 @@ config.yaml
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# CPA源代码
+cpa/

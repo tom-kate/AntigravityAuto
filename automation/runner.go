@@ -2,6 +2,7 @@ package automation
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -110,23 +111,31 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 		return fmt.Errorf("could not create page: %v", err)
 	}
 
-	// Intercept OAuth callback — channel carries: true=success, false=failed
+	// Intercept OAuth callback — extract code from redirect URL and complete flow locally
 	oauthCallbackCh := make(chan bool, 1)
 	bctx.OnRequest(func(req playwright.Request) {
 		reqURL := req.URL()
 		if strings.HasPrefix(reqURL, "http://localhost:51121/oauth-callback") {
-			if cbErr := api.SendOAuthCallback(reqURL); cbErr != nil {
-				L.Fail(email, fmt.Sprintf("OAuth Callback 失败: %v", cbErr))
-				select {
-				case oauthCallbackCh <- false:
-				default:
-				}
+			parsed, parseErr := url.Parse(reqURL)
+			if parseErr != nil {
+				L.Fail(email, fmt.Sprintf("OAuth Callback URL 解析失败: %v", parseErr))
+				select { case oauthCallbackCh <- false: default: }
+				return
+			}
+			code := parsed.Query().Get("code")
+			if code == "" {
+				errMsg := parsed.Query().Get("error")
+				L.Fail(email, fmt.Sprintf("OAuth Callback 无 code: error=%s", errMsg))
+				select { case oauthCallbackCh <- false: default: }
+				return
+			}
+			// Complete OAuth flow locally: exchange code → fetch email → fetch project → save auth file
+			if _, cbErr := api.CompleteOAuthFlow(code); cbErr != nil {
+				L.Fail(email, fmt.Sprintf("OAuth 本地流程失败: %v", cbErr))
+				select { case oauthCallbackCh <- false: default: }
 			} else {
-				L.OK(email, "OAuth Callback 已发送")
-				select {
-				case oauthCallbackCh <- true:
-				default:
-				}
+				L.OK(email, "OAuth 本地流程完成, 凭证已保存")
+				select { case oauthCallbackCh <- true: default: }
 			}
 		}
 	})
@@ -456,21 +465,13 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 
 // ─── OAuth Start Logic ──────────────────────────────────────────
 
-// oauthMu serializes all OAuth flows — CPA can only handle one OAuth at a time.
-// Getting URL → browser login → consent → callback must complete before the next one starts.
-var oauthMu sync.Mutex
-
+// doOAuthStart runs the full OAuth flow locally (no CPA API dependency, no concurrency lock).
+// Generates URL → browser consent → intercept callback code → exchange token → save auth file.
 func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserContext, oauthCallbackCh chan bool) error {
-	L.Info(email, "等待 OAuth 锁...")
-	oauthMu.Lock()
-	defer oauthMu.Unlock()
-	L.Info(email, "已获取 OAuth 锁, 开始授权")
-
-	oauthURL, err := api.GetOAuthURL()
-	if err != nil {
-		return fmt.Errorf("oauth_start: get oauth url failed: %w", err)
-	}
-	L.Info(email, fmt.Sprintf("获取到 OAuth URL: %s", oauthURL))
+	// Generate state and build URL locally
+	state := api.GenerateOAuthState()
+	oauthURL := api.BuildOAuthURL(state)
+	L.Info(email, fmt.Sprintf("生成 OAuth URL (state=%s...)", state[:8]))
 
 	oauthPage, err := bctx.NewPage()
 	if err != nil {
