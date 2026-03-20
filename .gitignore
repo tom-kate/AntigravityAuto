@@ -12,6 +12,9 @@ data.json.migrated
 # 配置（含敏感信息）
 config.yaml
 
+# 凭证文件（含 token）
+auths/
+
 # Claude Code
 .claude/
 
