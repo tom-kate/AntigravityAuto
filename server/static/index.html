@@ -41,6 +41,7 @@
               :class="quotaLoading?'border-[#30363d] text-[#484f58] cursor-wait':'border-[#30363d] text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#21262d]'">
         {{quotaLoading?'刷新中...':'刷新额度'}}
       </button>
+      <button @click="deleteAllSubs" class="text-[12px] px-4 py-1.5 rounded-lg border border-[#30363d] text-[#f85149] hover:bg-[#f8514915] transition">清空子号</button>
       <button @click="showAddModal=true" class="text-[12px] font-medium bg-[#238636] hover:bg-[#2ea043] text-white px-4 py-1.5 rounded-lg transition">+ 添加母号</button>
     </div>
   </header>

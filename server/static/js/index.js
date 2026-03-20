@@ -106,6 +106,7 @@ createApp({
     // Batch actions
     async function startBatch(id){try{await axios.post('/api/batch/'+id+'/start');showToast('已启动');loadMain()}catch(e){showToast(e.response?.data?.error||'启动失败',false)}}
     async function deleteBatch(id){if(!confirm('确认删除？'))return;try{await axios.post('/api/batch/'+id+'/delete');showToast('已删除');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
+    async function deleteAllSubs(){if(!confirm('确认删除所有子号？此操作不可撤销！'))return;try{const allBatchIds=[...new Set(batches.value.map(b=>b.id))];for(const bid of allBatchIds){await axios.post('/api/batch/'+bid+'/delete')}showToast('已清空所有子号');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
     async function setSuccess(bid,idx){try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/success');showToast('已设为成功');loadMain()}catch(e){showToast(e.response?.data?.error||'操作失败',false)}}
     async function delAccount(bid,idx){if(!confirm('确认删除？'))return;try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/delete');showToast('已删除');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
 
@@ -119,6 +120,6 @@ createApp({
       cpaStatusText,cpaLabelClass,cpaErrorType,showCPADetail,barColor,barTextColor,fmtReset,
       getMasterQuotaOverview,globalQuota,quotaSubCount,
       fmtExpiry,expiryStatus,getSubsForMaster,getBatchesForMaster,getCPAFile,
-      addMaster,delMaster,showToast,startBatch,deleteBatch,setSuccess,delAccount,bindPhone}
+      addMaster,delMaster,showToast,startBatch,deleteBatch,deleteAllSubs,setSuccess,delAccount,bindPhone}
   }
 }).mount('#app');
