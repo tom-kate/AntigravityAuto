@@ -27,6 +27,9 @@ var errRecaptcha = fmt.Errorf("recaptcha: 出现人机验证")
 // errManualCheck is a sentinel error indicating the account needs manual review.
 var errManualCheck = fmt.Errorf("manual_check: 需要人工确认")
 
+// errUploadFailed is a sentinel error indicating credential upload to CPA failed.
+var errUploadFailed = fmt.Errorf("upload_failed: 凭证上传失败")
+
 // checkRecaptcha checks if the current URL is a recaptcha challenge page.
 func checkRecaptcha(pageURL string) bool {
 	return strings.Contains(pageURL, "signin/challenge/recaptcha")
@@ -112,30 +115,35 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 	}
 
 	// Intercept OAuth callback — extract code from redirect URL and complete flow locally
-	oauthCallbackCh := make(chan bool, 1)
+	oauthCallbackCh := make(chan error, 1)
 	bctx.OnRequest(func(req playwright.Request) {
 		reqURL := req.URL()
 		if strings.HasPrefix(reqURL, "http://localhost:51121/oauth-callback") {
 			parsed, parseErr := url.Parse(reqURL)
 			if parseErr != nil {
 				L.Fail(email, fmt.Sprintf("OAuth Callback URL 解析失败: %v", parseErr))
-				select { case oauthCallbackCh <- false: default: }
+				select { case oauthCallbackCh <- parseErr: default: }
 				return
 			}
 			code := parsed.Query().Get("code")
 			if code == "" {
 				errMsg := parsed.Query().Get("error")
 				L.Fail(email, fmt.Sprintf("OAuth Callback 无 code: error=%s", errMsg))
-				select { case oauthCallbackCh <- false: default: }
+				select { case oauthCallbackCh <- fmt.Errorf("no code: %s", errMsg): default: }
 				return
 			}
-			// Complete OAuth flow locally: exchange code → fetch email → fetch project → save auth file
+			// Complete OAuth flow locally
 			if _, cbErr := api.CompleteOAuthFlow(code); cbErr != nil {
 				L.Fail(email, fmt.Sprintf("OAuth 本地流程失败: %v", cbErr))
-				select { case oauthCallbackCh <- false: default: }
+				// Check if it's an upload failure
+				if strings.Contains(cbErr.Error(), "upload_cpa_failed") {
+					select { case oauthCallbackCh <- errUploadFailed: default: }
+				} else {
+					select { case oauthCallbackCh <- cbErr: default: }
+				}
 			} else {
-				L.OK(email, "OAuth 本地流程完成, 凭证已保存")
-				select { case oauthCallbackCh <- true: default: }
+				L.OK(email, "OAuth 本地流程完成, 凭证已上传")
+				select { case oauthCallbackCh <- nil: default: }
 			}
 		}
 	})
@@ -467,7 +475,7 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 
 // doOAuthStart runs the full OAuth flow locally (no CPA API dependency, no concurrency lock).
 // Generates URL → browser consent → intercept callback code → exchange token → save auth file.
-func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserContext, oauthCallbackCh chan bool) error {
+func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserContext, oauthCallbackCh chan error) error {
 	// Generate state and build URL locally
 	state := api.GenerateOAuthState()
 	oauthURL := api.BuildOAuthURL(state)
@@ -524,12 +532,12 @@ func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserCo
 		if strings.Contains(currentURL, "localhost:51121/oauth-callback") {
 			L.OK(email, "OAuth 回调已触发")
 			select {
-			case ok := <-oauthCallbackCh:
-				if ok {
+			case cbErr := <-oauthCallbackCh:
+				if cbErr == nil {
 					L.OK(email, "OAuth 回调确认成功")
 					return nil
 				}
-				return fmt.Errorf("oauth_start: callback submission failed")
+				return cbErr
 			case <-time.After(30 * time.Second):
 				return fmt.Errorf("oauth_start: oauth callback confirmation timeout")
 			}
@@ -623,12 +631,12 @@ func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserCo
 	// Wait for callback
 	L.Info(email, "等待 OAuth 回调确认...")
 	select {
-	case ok := <-oauthCallbackCh:
-		if ok {
+	case cbErr := <-oauthCallbackCh:
+		if cbErr == nil {
 			L.OK(email, "OAuth 授权完成")
 			return nil
 		}
-		return fmt.Errorf("oauth_start: callback submission failed")
+		return cbErr
 	case <-time.After(30 * time.Second):
 		return fmt.Errorf("oauth_start: oauth callback confirmation timeout")
 	}
@@ -797,6 +805,12 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 		// Manual check: mark and skip, no retry
 		if err == errManualCheck {
 			updateStatus(batchID, idx, db.StatusError, "manual_check", "CPA 未返回手机绑定链接, 等待人工绑定")
+			return
+		}
+
+		// Upload failed: mark and skip, no retry
+		if err == errUploadFailed {
+			updateStatus(batchID, idx, db.StatusError, "upload_failed", "凭证上传 CPA 失败 (已重试3次)")
 			return
 		}
 

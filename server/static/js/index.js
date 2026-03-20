@@ -21,7 +21,7 @@ createApp({
 
     // Status & steps
     const SL={pending:'等待中',running:'运行中',success:'成功',failed:'失败',error:'异常',finished:'已完成'};
-    const SP={starting:'启动中',login:'登录',oauth:'OAuth授权',check_cpa:'CPA检测',phone_bind:'绑定手机',delete_cpa:'删除凭证',oauth_redo:'重新授权',done:'完成',retry_wait:'重试等待',exhausted:'已耗尽',recaptcha:'人机验证',manual_check:'等待人工绑定'};
+    const SP={starting:'启动中',login:'登录',oauth:'OAuth授权',check_cpa:'CPA检测',phone_bind:'绑定手机',delete_cpa:'删除凭证',oauth_redo:'重新授权',done:'完成',retry_wait:'重试等待',exhausted:'已耗尽',recaptcha:'人机验证',manual_check:'等待人工绑定',upload_failed:'凭证上传失败'};
     function statusLabel(s){return SL[s]||s}
     function stepLabel(s){return SP[s]||s||'--'}
     function statusColor(s){return{success:'text-[#3fb950]',failed:'text-[#f85149]',error:'text-[#d29922]',running:'text-[#58a6ff]',pending:'text-[#484f58]'}[s]||'text-[#484f58]'}

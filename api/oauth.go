@@ -421,10 +421,23 @@ func CompleteOAuthFlow(code string) (string, error) {
 	}
 
 	if err := UploadAuthFileToCPA(credJSON, filename); err != nil {
-		log.Printf("[%s] 凭证上传 CPA 失败: %v", email, err)
-	} else {
-		log.Printf("[%s] 凭证已上传 CPA", email)
+		// Retry up to 3 times
+		uploaded := false
+		for retry := 1; retry <= 3; retry++ {
+			log.Printf("[%s] 凭证上传 CPA 重试 %d/3...", email, retry)
+			time.Sleep(3 * time.Second)
+			if err := UploadAuthFileToCPA(credJSON, filename); err == nil {
+				uploaded = true
+				break
+			} else {
+				log.Printf("[%s] 凭证上传 CPA 重试失败: %v", email, err)
+			}
+		}
+		if !uploaded {
+			return email, fmt.Errorf("upload_cpa_failed: 凭证上传 CPA 失败 (已重试3次)")
+		}
 	}
+	log.Printf("[%s] 凭证已上传 CPA", email)
 
 	log.Printf("[%s] OAuth 完成: project=%s", email, projectID)
 	return email, nil
