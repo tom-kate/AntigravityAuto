@@ -284,6 +284,9 @@ func handleBatch(w http.ResponseWriter, r *http.Request) {
 			} else {
 				http.Error(w, `{"error":"not found"}`, 404)
 			}
+		case "bind-phone":
+			go automation.RunPhoneBind(batchID, idx)
+			json.NewEncoder(w).Encode(map[string]string{"status": "started"})
 		default:
 			http.Error(w, `{"error":"unknown sub-action"}`, 400)
 		}

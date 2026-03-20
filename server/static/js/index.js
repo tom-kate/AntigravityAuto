@@ -21,7 +21,7 @@ createApp({
 
     // Status & steps
     const SL={pending:'等待中',running:'运行中',success:'成功',failed:'失败',error:'异常',finished:'已完成'};
-    const SP={starting:'启动中',login:'登录',oauth:'OAuth授权',check_cpa:'CPA检测',phone_bind:'绑定手机',delete_cpa:'删除凭证',oauth_redo:'重新授权',done:'完成',retry_wait:'重试等待',exhausted:'已耗尽',recaptcha:'人机验证',manual_check:'等待人工绑定',upload_failed:'凭证上传失败'};
+    const SP={starting:'启动中',login:'登录',oauth:'OAuth授权',check_cpa:'CPA检测',phone_bind:'绑定手机',delete_cpa:'删除凭证',oauth_redo:'重新授权',done:'完成',retry_wait:'重试等待',exhausted:'已耗尽',recaptcha:'人机验证',manual_check:'等待人工绑定',upload_failed:'凭证上传失败',need_restart:'需要重启'};
     function statusLabel(s){return SL[s]||s}
     function stepLabel(s){return SP[s]||s||'--'}
     function statusColor(s){return{success:'text-[#3fb950]',failed:'text-[#f85149]',error:'text-[#d29922]',running:'text-[#58a6ff]',pending:'text-[#484f58]'}[s]||'text-[#484f58]'}
@@ -100,6 +100,9 @@ createApp({
       }
     }
 
+    // Phone bind
+    async function bindPhone(bid,idx){try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/bind-phone');showToast('手机绑定已启动');loadMain()}catch(e){showToast(e.response?.data?.error||'启动失败',false)}}
+
     // Batch actions
     async function startBatch(id){try{await axios.post('/api/batch/'+id+'/start');showToast('已启动');loadMain()}catch(e){showToast(e.response?.data?.error||'启动失败',false)}}
     async function deleteBatch(id){if(!confirm('确认删除？'))return;try{await axios.post('/api/batch/'+id+'/delete');showToast('已删除');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
@@ -113,9 +116,9 @@ createApp({
       editingId,editRemark,editExpiry,startEdit,saveEdit,toggleWeeklyLimit,refreshAllQuotas,refreshSingleQuota,get2FA,
       subModal,openSubModal,submitSubModal,showMasterInfo,copyText,copyMasterFull,showSubInfo,copySubFull,warrantyStatus,
       statusLabel,stepLabel,statusColor,dotClass,batchLabel,batchColor,batchDot,cnt,hasNonSuccess,
-      cpaStatusText,cpaLabelClass,showCPADetail,barColor,barTextColor,fmtReset,
+      cpaStatusText,cpaLabelClass,cpaErrorType,showCPADetail,barColor,barTextColor,fmtReset,
       getMasterQuotaOverview,globalQuota,quotaSubCount,
       fmtExpiry,expiryStatus,getSubsForMaster,getBatchesForMaster,getCPAFile,
-      addMaster,delMaster,showToast,startBatch,deleteBatch,setSuccess,delAccount}
+      addMaster,delMaster,showToast,startBatch,deleteBatch,setSuccess,delAccount,bindPhone}
   }
 }).mount('#app');

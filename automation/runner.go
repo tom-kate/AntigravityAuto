@@ -30,6 +30,9 @@ var errManualCheck = fmt.Errorf("manual_check: 需要人工确认")
 // errUploadFailed is a sentinel error indicating credential upload to CPA failed.
 var errUploadFailed = fmt.Errorf("upload_failed: 凭证上传失败")
 
+// errNeedRestart is a sentinel error indicating account needs re-OAuth (phone binding not actually needed).
+var errNeedRestart = fmt.Errorf("need_restart: 需要重新授权")
+
 // checkRecaptcha checks if the current URL is a recaptcha challenge page.
 func checkRecaptcha(pageURL string) bool {
 	return strings.Contains(pageURL, "signin/challenge/recaptcha")
@@ -662,12 +665,18 @@ func doPhoneBind(email string, page playwright.Page, validationURL string, batch
 		}
 		time.Sleep(5 * time.Second)
 
+		enteredPhoneFlow := false // track if we actually entered the phone binding flow
 		success := false
 		for i := 0; i < 30; i++ {
 			currentURL := page.URL()
 
 			if strings.Contains(currentURL, "gemini-code-assist/auth/auth_success") ||
 				strings.Contains(currentURL, "mail.google.com/mail/u/0") {
+				if !enteredPhoneFlow {
+					// Jumped to success without going through phone binding → needs re-OAuth
+					L.Warn(email, "打开验证链接直接跳转到成功页, 无需手机绑定, 标记为需要重启")
+					return errNeedRestart
+				}
 				L.OK(email, "手机绑定成功")
 				db.DB.SetPhoneBound(batchID, idx)
 				return nil
@@ -678,6 +687,7 @@ func doPhoneBind(email string, page playwright.Page, validationURL string, batch
 			}
 
 			if strings.Contains(currentURL, "/uplevelingstep/selection") {
+				enteredPhoneFlow = true
 				L.Info(email, "检测到验证步骤选择页面, 点击短信验证选项...")
 				stepOption := page.Locator(`div[data-step-type="1"]`).First()
 				if err := stepOption.Click(); err != nil {
@@ -700,6 +710,7 @@ func doPhoneBind(email string, page playwright.Page, validationURL string, batch
 			}
 
 			if strings.Contains(currentURL, "/challenge/iap") {
+				enteredPhoneFlow = true
 				L.Info(email, "检测到手机号输入页面...")
 				if err := handlePhoneInput(email, page); err != nil {
 					L.Warn(email, fmt.Sprintf("手机号输入处理失败: %v", err))
@@ -814,6 +825,12 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 			return
 		}
 
+		// Need restart: mark and skip, no retry
+		if err == errNeedRestart {
+			updateStatus(batchID, idx, db.StatusError, "need_restart", "无需手机绑定, 需要重新授权")
+			return
+		}
+
 		errMsg := fmt.Sprintf("第 %d/%d 次: %v", attempt, db.MaxRetries, err)
 		L.Fail(email, errMsg)
 
@@ -903,4 +920,152 @@ func RunBatch(batchID string) {
 
 	db.DB.UpdateBatchStatus(batchID, db.BatchFinished)
 	L.Banner("批次执行完毕")
+}
+
+// RunPhoneBind runs a standalone phone binding for a single sub account.
+// It logs in, gets validation URL from CPA, and performs phone binding.
+func RunPhoneBind(batchID string, idx int) {
+	batch := db.DB.GetBatch(batchID)
+	if batch == nil || idx >= len(batch.Accounts) {
+		return
+	}
+
+	account := batch.Accounts[idx]
+	email := account.Email
+
+	L.Banner(fmt.Sprintf("手动手机绑定: %s", email))
+	updateStatus(batchID, idx, db.StatusRunning, "phone_bind", "")
+
+	if err := playwright.Install(); err != nil {
+		L.Fail(email, fmt.Sprintf("Playwright 安装失败: %v", err))
+		updateStatus(batchID, idx, db.StatusError, "phone_bind", fmt.Sprintf("Playwright 安装失败: %v", err))
+		return
+	}
+
+	pw, err := playwright.Run()
+	if err != nil {
+		L.Fail(email, fmt.Sprintf("Playwright 启动失败: %v", err))
+		updateStatus(batchID, idx, db.StatusError, "phone_bind", fmt.Sprintf("Playwright 启动失败: %v", err))
+		return
+	}
+	defer pw.Stop()
+
+	launchOpts := playwright.BrowserTypeLaunchOptions{
+		Headless: playwright.Bool(false),
+		Args: []string{
+			"--disable-blink-features=AutomationControlled",
+			"--no-sandbox",
+			"--disable-dev-shm-usage",
+			"--disable-infobars",
+			"--disable-extensions",
+		},
+	}
+	if config.Get().Headless {
+		launchOpts.Args = append(launchOpts.Args, "--headless=new")
+	}
+	if cfg := config.Get(); cfg.ProxyEnabled && cfg.Proxy != "" {
+		launchOpts.Proxy = &playwright.Proxy{Server: cfg.Proxy}
+	}
+
+	browser, err := pw.Chromium.Launch(launchOpts)
+	if err != nil {
+		L.Fail(email, fmt.Sprintf("浏览器启动失败: %v", err))
+		updateStatus(batchID, idx, db.StatusError, "phone_bind", fmt.Sprintf("浏览器启动失败: %v", err))
+		return
+	}
+	defer browser.Close()
+
+	bctx, err := browser.NewContext(playwright.BrowserNewContextOptions{
+		UserAgent: playwright.String("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+	})
+	if err != nil {
+		updateStatus(batchID, idx, db.StatusError, "phone_bind", "创建浏览器上下文失败")
+		return
+	}
+	defer bctx.Close()
+
+	page, err := bctx.NewPage()
+	if err != nil {
+		updateStatus(batchID, idx, db.StatusError, "phone_bind", "创建页面失败")
+		return
+	}
+
+	// Step 1: Login
+	L.Step(email, "登录中...")
+	if err := doLogin(email, account, page); err != nil {
+		L.Fail(email, fmt.Sprintf("登录失败: %v", err))
+		updateStatus(batchID, idx, db.StatusError, "phone_bind", fmt.Sprintf("登录失败: %v", err))
+		return
+	}
+
+	// Step 2: Get validation URL from CPA
+	L.Step(email, "获取手机绑定链接...")
+	var validationURL string
+	for poll := 0; poll < 10; poll++ {
+		if poll > 0 {
+			time.Sleep(3 * time.Second)
+		}
+		status, vURL, err := api.CheckCPAOnce(email)
+		if err != nil {
+			continue
+		}
+		if status == api.CPAHasURL {
+			validationURL = vURL
+			break
+		}
+	}
+
+	if validationURL == "" {
+		L.Fail(email, "未获取到手机绑定链接")
+		updateStatus(batchID, idx, db.StatusError, "phone_bind", "CPA 未返回手机绑定链接")
+		return
+	}
+
+	L.Info(email, fmt.Sprintf("手机绑定链接: %s", validationURL))
+
+	// Step 3: Phone binding
+	err = doPhoneBind(email, page, validationURL, batchID, idx)
+	if err == errNeedRestart {
+		updateStatus(batchID, idx, db.StatusError, "need_restart", "无需手机绑定, 需要重新授权")
+		return
+	}
+	if err != nil {
+		L.Fail(email, fmt.Sprintf("手机绑定失败: %v", err))
+		updateStatus(batchID, idx, db.StatusError, "phone_bind", fmt.Sprintf("手机绑定失败: %v", err))
+		return
+	}
+
+	// Step 4: Delete CPA file and re-OAuth
+	L.Info(email, "手机绑定完成, 删除 CPA 凭证...")
+	api.DeleteAuthFile(email)
+	time.Sleep(3 * time.Second)
+
+	// Re-OAuth with callback handling
+	oauthCallbackCh := make(chan error, 1)
+	bctx.OnRequest(func(req playwright.Request) {
+		reqURL := req.URL()
+		if strings.HasPrefix(reqURL, "http://localhost:51121/oauth-callback") {
+			parsed, _ := url.Parse(reqURL)
+			code := parsed.Query().Get("code")
+			if code == "" {
+				select { case oauthCallbackCh <- fmt.Errorf("no code"): default: }
+				return
+			}
+			if _, cbErr := api.CompleteOAuthFlow(code); cbErr != nil {
+				select { case oauthCallbackCh <- cbErr: default: }
+			} else {
+				select { case oauthCallbackCh <- nil: default: }
+			}
+		}
+	})
+
+	L.Step(email, "重新 OAuth 授权...")
+	if err := doOAuthStart(email, account, bctx, oauthCallbackCh); err != nil {
+		L.Fail(email, fmt.Sprintf("重新 OAuth 失败: %v", err))
+		updateStatus(batchID, idx, db.StatusError, "oauth", fmt.Sprintf("重新 OAuth 失败: %v", err))
+		return
+	}
+
+	updateStatus(batchID, idx, db.StatusSuccess, "done", "")
+	L.OK(email, "手动手机绑定 + 重新授权完成")
 }
