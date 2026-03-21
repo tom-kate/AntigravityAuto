@@ -648,96 +648,75 @@ func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserCo
 // ─── Phone Bind Logic ───────────────────────────────────────────
 
 func doPhoneBind(email string, page playwright.Page, validationURL string, batchID string, idx int) error {
-	const maxRetries = 3
+	L.Info(email, "开始手机绑定流程")
 
-	L.Info(email, fmt.Sprintf("开始手机绑定流程 (最多 %d 次尝试)", maxRetries))
+	if _, err := page.Goto(validationURL, playwright.PageGotoOptions{
+		Timeout: playwright.Float(60000),
+	}); err != nil {
+		return fmt.Errorf("phone_bind: navigate failed: %w", err)
+	}
+	time.Sleep(5 * time.Second)
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if attempt > 0 {
-			L.Info(email, fmt.Sprintf("手机绑定重试 %d/%d", attempt+1, maxRetries))
+	enteredPhoneFlow := false
+	for i := 0; i < 30; i++ {
+		currentURL := page.URL()
+
+		if strings.Contains(currentURL, "gemini-code-assist/auth/auth_success") ||
+			strings.Contains(currentURL, "mail.google.com/mail/u/0") {
+			if !enteredPhoneFlow {
+				L.Warn(email, "打开验证链接直接跳转到成功页, 无需手机绑定, 标记为需要重启")
+				return errNeedRestart
+			}
+			L.OK(email, "手机绑定成功")
+			db.DB.SetPhoneBound(batchID, idx)
+			return nil
 		}
 
-		if _, err := page.Goto(validationURL, playwright.PageGotoOptions{
-			Timeout: playwright.Float(60000),
-		}); err != nil {
-			L.Warn(email, fmt.Sprintf("导航到验证页面失败: %v", err))
-			continue
+		if strings.Contains(currentURL, "chrome-error") {
+			return fmt.Errorf("phone_bind: chrome error")
 		}
-		time.Sleep(5 * time.Second)
 
-		enteredPhoneFlow := false // track if we actually entered the phone binding flow
-		success := false
-		for i := 0; i < 30; i++ {
-			currentURL := page.URL()
-
-			if strings.Contains(currentURL, "gemini-code-assist/auth/auth_success") ||
-				strings.Contains(currentURL, "mail.google.com/mail/u/0") {
-				if !enteredPhoneFlow {
-					// Jumped to success without going through phone binding → needs re-OAuth
-					L.Warn(email, "打开验证链接直接跳转到成功页, 无需手机绑定, 标记为需要重启")
-					return errNeedRestart
-				}
-				L.OK(email, "手机绑定成功")
-				db.DB.SetPhoneBound(batchID, idx)
-				return nil
+		if strings.Contains(currentURL, "/uplevelingstep/selection") {
+			enteredPhoneFlow = true
+			L.Info(email, "检测到验证步骤选择页面, 点击短信验证选项...")
+			stepOption := page.Locator(`div[data-step-type="1"]`).First()
+			if err := stepOption.Click(); err != nil {
+				L.Warn(email, fmt.Sprintf("点击验证步骤失败: %v", err))
 			}
-
-			if strings.Contains(currentURL, "chrome-error") {
-				return fmt.Errorf("phone_bind: chrome error encountered")
-			}
-
-			if strings.Contains(currentURL, "/uplevelingstep/selection") {
-				enteredPhoneFlow = true
-				L.Info(email, "检测到验证步骤选择页面, 点击短信验证选项...")
-				stepOption := page.Locator(`div[data-step-type="1"]`).First()
-				if err := stepOption.Click(); err != nil {
-					L.Warn(email, fmt.Sprintf("点击验证步骤失败: %v", err))
-				}
-				waited := false
-				for j := 0; j < 20; j++ {
-					time.Sleep(2 * time.Second)
-					newURL := page.URL()
-					if !strings.Contains(newURL, "/uplevelingstep/selection") {
-						L.OK(email, fmt.Sprintf("已离开选择页面, 当前: %s", newURL))
-						waited = true
-						break
-					}
-				}
-				if !waited {
-					L.Warn(email, "等待离开选择页面超时, 继续轮询")
-				}
-				continue
-			}
-
-			if strings.Contains(currentURL, "/challenge/iap") {
-				enteredPhoneFlow = true
-				L.Info(email, "检测到手机号输入页面...")
-				if err := handlePhoneInput(email, page, validationURL); err != nil {
-					L.Warn(email, fmt.Sprintf("手机号输入处理失败: %v", err))
+			for j := 0; j < 20; j++ {
+				time.Sleep(2 * time.Second)
+				if !strings.Contains(page.URL(), "/uplevelingstep/selection") {
+					L.OK(email, fmt.Sprintf("已离开选择页面"))
 					break
 				}
-				success = true
-				break
 			}
-
-			time.Sleep(3 * time.Second)
+			continue
 		}
 
-		if success {
-			for i := 0; i < 30; i++ {
-				currentURL := page.URL()
-				if strings.Contains(currentURL, "gemini-code-assist/auth/auth_success") ||
-					strings.Contains(currentURL, "mail.google.com/mail/u/0") {
+		if strings.Contains(currentURL, "/challenge/iap") {
+			enteredPhoneFlow = true
+			L.Info(email, "检测到手机号输入页面...")
+			if err := handlePhoneInput(email, page, validationURL); err != nil {
+				return fmt.Errorf("phone_bind: %w", err)
+			}
+			// Wait for success redirect
+			for k := 0; k < 30; k++ {
+				cur := page.URL()
+				if strings.Contains(cur, "gemini-code-assist/auth/auth_success") ||
+					strings.Contains(cur, "mail.google.com/mail/u/0") {
 					L.OK(email, "手机绑定成功")
 					db.DB.SetPhoneBound(batchID, idx)
 					return nil
 				}
 				time.Sleep(3 * time.Second)
 			}
+			return fmt.Errorf("phone_bind: 手机验证后未跳转到成功页")
 		}
+
+		time.Sleep(3 * time.Second)
 	}
 
-	return fmt.Errorf("phone_bind: failed after %d retries", maxRetries)
+	return fmt.Errorf("phone_bind: 未检测到手机绑定页面")
 }
 
 func handlePhoneInput(email string, page playwright.Page, validationURL string) error {
@@ -978,6 +957,12 @@ func RunPhoneBind(batchID string, idx int) {
 
 	account := batch.Accounts[idx]
 	email := account.Email
+
+	// Prevent duplicate runs
+	if account.Status == db.StatusRunning {
+		L.Warn(email, "该账号正在执行中, 请勿重复操作")
+		return
+	}
 
 	L.Banner(fmt.Sprintf("手动手机绑定: %s", email))
 	updateStatus(batchID, idx, db.StatusRunning, "phone_bind", "")
