@@ -1,0 +1,11 @@
+.git
+.claude
+.idea
+.vscode
+cpa/
+auths/
+data/
+data.db*
+config.yaml
+*.exe
+AntigravityAuto

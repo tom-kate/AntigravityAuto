@@ -124,8 +124,13 @@
             </div>
             <div>
               <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">频道 ID (对接码)</label>
-              <input v-model="form.sms_channel_id" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="channelId">
-              <p class="text-[10px] text-[#484f58] mt-1">保存后需重启程序以重新登录短信平台</p>
+              <div class="space-y-2">
+                <div v-for="(ch, i) in form.sms_channel_ids" :key="i" class="flex items-center gap-2">
+                  <span class="text-[11px] text-[#484f58] w-4 text-right shrink-0">{{i+1}}</span>
+                  <input v-model="form.sms_channel_ids[i]" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" :placeholder="'频道 '+(i+1)">
+                </div>
+              </div>
+              <p class="text-[10px] text-[#484f58] mt-1">获取手机号时从频道 1 开始，失败则自动切换下一个频道</p>
             </div>
           </div>
         </div>

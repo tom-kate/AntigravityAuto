@@ -3,6 +3,7 @@ AntiAuto
 AntiAuto.exe
 
 # 运行时数据
+data/
 data.db
 data.db-wal
 data.db-shm

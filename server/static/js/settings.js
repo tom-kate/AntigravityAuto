@@ -1,13 +1,21 @@
 const {createApp,ref,onMounted} = Vue;
 createApp({
   setup(){
-    const form=ref({proxy:'',proxy_enabled:false,cpa_token:'',cpa_api_url:'',sms_username:'',sms_password:'',sms_channel_id:'',headless:false,concurrency:1,port:8080});
+    const form=ref({proxy:'',proxy_enabled:false,cpa_token:'',cpa_api_url:'',sms_username:'',sms_password:'',sms_channel_ids:['','',''],headless:false,concurrency:1,port:8080});
     const loaded=ref(false),saving=ref(false),saved=ref(false);
 
     async function loadConfig(){
       try{
         const r=await axios.get('/api/config');
-        form.value=r.data;
+        const d=r.data;
+        // Migrate legacy sms_channel_id → sms_channel_ids
+        if(!d.sms_channel_ids||!d.sms_channel_ids.length){
+          d.sms_channel_ids=[d.sms_channel_id||'','',''];
+        }
+        // Ensure always 3 slots
+        while(d.sms_channel_ids.length<3) d.sms_channel_ids.push('');
+        d.sms_channel_ids=d.sms_channel_ids.slice(0,3);
+        form.value=d;
         loaded.value=true;
       }catch(e){console.error(e)}
     }

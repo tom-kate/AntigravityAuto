@@ -20,7 +20,7 @@ func main() {
 	config.StartHotReload()
 
 	L.Sys("初始化数据库...")
-	if err := db.Init("data.db"); err != nil {
+	if err := db.Init("data/data.db"); err != nil {
 		log.Fatalf("Failed to init database: %v", err)
 	}
 

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -117,6 +119,13 @@ CREATE TABLE IF NOT EXISTS sub_accounts (
 `
 
 func Init(dbPath string) error {
+	// Ensure parent directory exists
+	if dir := filepath.Dir(dbPath); dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create db directory: %v", err)
+		}
+	}
+
 	sqlDB, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %v", err)

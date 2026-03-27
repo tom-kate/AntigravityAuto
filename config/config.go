@@ -17,13 +17,14 @@ type Config struct {
 	CPAAPIURL    string `yaml:"cpa_api_url"    json:"cpa_api_url"`
 	SMSUsername  string `yaml:"sms_username"   json:"sms_username"`
 	SMSPassword string `yaml:"sms_password"   json:"sms_password"`
-	SMSChannelID string `yaml:"sms_channel_id" json:"sms_channel_id"`
+	SMSChannelID  string   `yaml:"sms_channel_id,omitempty"  json:"sms_channel_id,omitempty"`  // deprecated: use sms_channel_ids
+	SMSChannelIDs []string `yaml:"sms_channel_ids"           json:"sms_channel_ids"`
 	Headless     bool   `yaml:"headless"       json:"headless"`
 	Concurrency  int    `yaml:"concurrency"    json:"concurrency"`
 	Port         int    `yaml:"port"           json:"port"`
 }
 
-const configFile = "config.yaml"
+const configFile = "data/config.yaml"
 
 var (
 	App     Config
@@ -60,6 +61,12 @@ func reload() error {
 
 	if cfg.Port == 0 {
 		cfg.Port = 8080
+	}
+
+	// Migrate legacy sms_channel_id → sms_channel_ids
+	if cfg.SMSChannelID != "" && len(cfg.SMSChannelIDs) == 0 {
+		cfg.SMSChannelIDs = []string{cfg.SMSChannelID}
+		cfg.SMSChannelID = ""
 	}
 
 	App = cfg

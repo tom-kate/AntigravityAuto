@@ -119,15 +119,14 @@ type CodeResponse struct {
 
 // ─── Get Phone Number ───────────────────────────────────────────
 
-func GetPhoneNumber() (formatted string, raw string, phoneID string, err error) {
+func GetPhoneNumber(channelID string) (formatted string, raw string, phoneID string, err error) {
 	token := getSMSToken()
 	if token == "" {
 		return "", "", "", fmt.Errorf("短信平台未登录, 无 token")
 	}
 
-	cfg := config.Get()
 	apiURL := fmt.Sprintf("https://api.qc86.shop/api/getPhone?token=%s&channelId=%s&operator=0",
-		url.QueryEscape(token), url.QueryEscape(cfg.SMSChannelID))
+		url.QueryEscape(token), url.QueryEscape(channelID))
 
 	resp, err := getSMSClient().Get(apiURL)
 	if err != nil {
@@ -173,17 +172,15 @@ func GetPhoneNumber() (formatted string, raw string, phoneID string, err error) 
 
 // ─── Get SMS Code ───────────────────────────────────────────────
 
-func GetSMSCode(rawPhoneNum, phoneID string) (string, error) {
+func GetSMSCode(rawPhoneNum, phoneID, channelID string) (string, error) {
 	token := getSMSToken()
 	if token == "" {
 		return "", fmt.Errorf("短信平台未登录, 无 token")
 	}
 
-	cfg := config.Get()
-
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 20; i++ {
 		apiURL := fmt.Sprintf("https://api.qc86.shop/api/getCode?token=%s&channelId=%s&phoneNum=%s",
-			url.QueryEscape(token), url.QueryEscape(cfg.SMSChannelID), url.QueryEscape(rawPhoneNum))
+			url.QueryEscape(token), url.QueryEscape(channelID), url.QueryEscape(rawPhoneNum))
 
 		resp, err := getSMSClient().Get(apiURL)
 		if err != nil {
@@ -205,20 +202,19 @@ func GetSMSCode(rawPhoneNum, phoneID string) (string, error) {
 		time.Sleep(2 * time.Second)
 	}
 
-	return "", fmt.Errorf("获取短信验证码失败: 60次轮询后未收到")
+	return "", fmt.Errorf("获取短信验证码失败: 20次轮询后未收到")
 }
 
 // ─── Release Phone ──────────────────────────────────────────────
 
 // ReleasePhone releases a phone number back to the pool.
-func ReleasePhone(phoneNo string) error {
+func ReleasePhone(phoneNo, channelID string) error {
 	token := getSMSToken()
 	if token == "" {
 		return nil
 	}
-	cfg := config.Get()
 	apiURL := fmt.Sprintf("https://api.qc86.shop/api/release?token=%s&channelId=%s&phoneNo=%s&status=2",
-		url.QueryEscape(token), url.QueryEscape(cfg.SMSChannelID), url.QueryEscape(phoneNo))
+		url.QueryEscape(token), url.QueryEscape(channelID), url.QueryEscape(phoneNo))
 
 	resp, err := getSMSClient().Get(apiURL)
 	if err != nil {
