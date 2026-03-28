@@ -134,7 +134,14 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 		return err
 	}
 
-	// ─── Step 2: OAuth → CPA check → (phone bind / retry) ───
+	// ─── Step 2: Accept family group invitation ───
+	updateStatus(batchID, idx, db.StatusRunning, "family_accept", "")
+	L.Step(email, "确认家庭组邀请...")
+	if err := doFamilyAccept(email, bctx, page); err != nil {
+		return err
+	}
+
+	// ─── Step 3: OAuth → CPA check → (phone bind / retry) ───
 	const maxCPAPolls = 10    // polls (10 × 3s = 30s max wait)
 	const cpaPollInterval = 3 // seconds between polls
 	const maxOAuthRetries = 3 // retries if callback fails
@@ -346,6 +353,12 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 		// Quota dead: mark and skip, no retry
 		if err == errQuotaDead {
 			updateStatus(batchID, idx, db.StatusError, "quota_dead", "额度刷新时间超过5小时, 账号判定死亡")
+			return
+		}
+
+		// Family country mismatch: mark and skip, no retry
+		if err == errFamilyCountry {
+			updateStatus(batchID, idx, db.StatusError, "family_country", "国家不支持, 无法加入家庭组")
 			return
 		}
 
