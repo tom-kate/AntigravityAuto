@@ -13,12 +13,7 @@ RUN go build -ldflags="-s -w" -o /pw-install github.com/playwright-community/pla
 FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates tzdata \
-    # Playwright Chromium dependencies
-    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
-    libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
-    libpango-1.0-0 libcairo2 libasound2t64 libxshmfence1 \
-    libgtk-3-0 libx11-xcb1 fonts-liberation \
+    ca-certificates tzdata fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 ENV TZ=Asia/Shanghai
@@ -32,8 +27,8 @@ COPY config.yaml.example data/config.yaml.example
 # Also keep a copy outside the VOLUME so it survives mount
 COPY config.yaml.example /defaults/config.yaml.example
 
-# Pre-install Playwright Chromium into the image
-RUN /tmp/pw-install install chromium && rm /tmp/pw-install
+# Pre-install Playwright Chromium + all its system deps
+RUN /tmp/pw-install install --with-deps chromium && rm /tmp/pw-install
 
 # Create mount-point directories
 RUN mkdir -p data auths

@@ -344,7 +344,7 @@ func RunBatch(batchID string) {
 
 	L.Banner(fmt.Sprintf("批次启动: %d 个子号, 全局并发上限 %d", len(batch.Accounts), cap(sem)))
 
-	if err := playwright.Install(); err != nil {
+	if err := playwright.Install(&playwright.RunOptions{Browsers: []string{"chromium"}}); err != nil {
 		L.Sys(fmt.Sprintf("Playwright 安装失败: %v", err))
 		db.DB.UpdateBatchStatus(batchID, db.BatchFinished)
 		return
@@ -404,7 +404,7 @@ func RunPhoneBind(batchID string, idx int) {
 	L.Banner(fmt.Sprintf("手动手机绑定: %s", email))
 	updateStatus(batchID, idx, db.StatusRunning, "phone_bind", "")
 
-	if err := playwright.Install(); err != nil {
+	if err := playwright.Install(&playwright.RunOptions{Browsers: []string{"chromium"}}); err != nil {
 		L.Fail(email, fmt.Sprintf("Playwright 安装失败: %v", err))
 		updateStatus(batchID, idx, db.StatusError, "phone_bind", fmt.Sprintf("Playwright 安装失败: %v", err))
 		return
