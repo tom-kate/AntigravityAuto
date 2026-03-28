@@ -25,6 +25,8 @@ type Config struct {
 }
 
 const configFile = "data/config.yaml"
+const exampleFile = "data/config.yaml.example"
+const fallbackExample = "/defaults/config.yaml.example"
 
 var (
 	App     Config
@@ -39,8 +41,30 @@ func Get() Config {
 	return App
 }
 
-// Load reads config.yaml
+// Load reads config.yaml; if missing, bootstraps from the example file.
 func Load() error {
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		log.Println("config.yaml not found, creating default from example...")
+		// Try example file from data/ first, then fallback location
+		src, e := os.ReadFile(exampleFile)
+		if e != nil {
+			src, e = os.ReadFile(fallbackExample)
+		}
+		_ = os.MkdirAll("data", 0755)
+		if e == nil {
+			if e2 := os.WriteFile(configFile, src, 0644); e2 != nil {
+				return fmt.Errorf("create default config: %v", e2)
+			}
+		} else {
+			// No example either — write a minimal default
+			_ = os.MkdirAll("data", 0755)
+			minimal := Config{Port: 8080, Headless: true}
+			data, _ := yaml.Marshal(&minimal)
+			if e2 := os.WriteFile(configFile, data, 0644); e2 != nil {
+				return fmt.Errorf("create default config: %v", e2)
+			}
+		}
+	}
 	return reload()
 }
 

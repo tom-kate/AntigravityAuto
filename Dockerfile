@@ -29,6 +29,8 @@ WORKDIR /app
 COPY --from=builder /antiauto .
 COPY --from=builder /pw-install /tmp/pw-install
 COPY config.yaml.example data/config.yaml.example
+# Also keep a copy outside the VOLUME so it survives mount
+COPY config.yaml.example /defaults/config.yaml.example
 
 # Pre-install Playwright Chromium into the image
 RUN /tmp/pw-install install chromium && rm /tmp/pw-install
