@@ -22,6 +22,9 @@ var errUploadFailed = fmt.Errorf("upload_failed: 凭证上传失败")
 // errNeedRestart is a sentinel error indicating account needs re-OAuth (phone binding not actually needed).
 var errNeedRestart = fmt.Errorf("need_restart: 需要重新授权")
 
+// errQuotaDead is a sentinel error indicating the account quota reset time exceeds 5 hours.
+var errQuotaDead = fmt.Errorf("quota_dead: 额度刷新时间超过5小时, 账号判定死亡")
+
 // checkRecaptcha checks if the current URL is a recaptcha challenge page.
 func checkRecaptcha(pageURL string) bool {
 	return strings.Contains(pageURL, "signin/challenge/recaptcha")

@@ -172,6 +172,56 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 		return err
 	}
 
+	// ─── Quota check: detect dead accounts ───
+	updateStatus(batchID, idx, db.StatusRunning, "check_quota", "")
+	L.Step(email, "检查额度...")
+
+	// Wait for CPA to sync the auth file and get authIndex
+	var authIndex string
+	for poll := 0; poll < 10; poll++ {
+		if poll > 0 {
+			time.Sleep(3 * time.Second)
+		}
+		files, err := api.GetAuthFiles()
+		if err != nil {
+			continue
+		}
+		for _, f := range files {
+			if strings.EqualFold(f.Account, email) || strings.EqualFold(f.Email, email) {
+				authIndex = f.AuthIndex
+				break
+			}
+		}
+		if authIndex != "" {
+			break
+		}
+	}
+
+	if authIndex != "" {
+		quotas, err := api.GetQuota(authIndex)
+		if err != nil {
+			L.Warn(email, fmt.Sprintf("额度查询失败: %v (继续流程)", err))
+		} else {
+			for _, q := range quotas {
+				if q.ResetTime == "" {
+					continue
+				}
+				resetT, parseErr := time.Parse(time.RFC3339, q.ResetTime)
+				if parseErr != nil {
+					continue
+				}
+				if time.Until(resetT) > 5*time.Hour {
+					L.Fail(email, fmt.Sprintf("模型 %s 额度刷新时间 %s, 距现在 %.1f 小时, 判定死亡",
+						q.Name, q.ResetTime, time.Until(resetT).Hours()))
+					return errQuotaDead
+				}
+			}
+			L.OK(email, "额度检查通过")
+		}
+	} else {
+		L.Warn(email, "未能获取 authIndex, 跳过额度检查")
+	}
+
 	// If phone already bound, we're done — no need for CPA check
 	if phoneBound {
 		L.OK(email, "手机已绑定, 无需 CPA 检测, 完成")
@@ -290,6 +340,12 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 		// Need restart: mark and skip, no retry
 		if err == errNeedRestart {
 			updateStatus(batchID, idx, db.StatusError, "need_restart", "无需手机绑定, 需要重新授权")
+			return
+		}
+
+		// Quota dead: mark and skip, no retry
+		if err == errQuotaDead {
+			updateStatus(batchID, idx, db.StatusError, "quota_dead", "额度刷新时间超过5小时, 账号判定死亡")
 			return
 		}
 
