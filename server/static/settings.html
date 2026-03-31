@@ -37,112 +37,85 @@
 
   <!-- Main -->
   <div class="flex-1 overflow-y-auto">
-      <div class="max-w-[680px] mx-auto p-8 space-y-6" v-if="loaded">
+    <div class="max-w-[1200px] mx-auto p-8" v-if="loaded">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <!-- Browser -->
-        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6 space-y-5">
-          <div class="flex items-center gap-2 mb-1">
-            <svg class="w-4 h-4 text-[#58a6ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            <span class="text-[#e6edf3] font-semibold text-[14px]">浏览器</span>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">代理地址</label>
-              <input v-model="form.proxy" :disabled="!form.proxy_enabled" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition disabled:opacity-40 disabled:cursor-not-allowed" placeholder="http://127.0.0.1:10808">
-            </div>
-            <div>
-              <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">Web 端口</label>
-              <input v-model.number="form.port" type="number" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="8080">
-              <p class="text-[10px] text-[#484f58] mt-1">修改端口后需重启程序</p>
-            </div>
-          </div>
-          <div class="flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-3.5">
-            <div>
-              <div class="text-[#e6edf3] text-[13px] font-medium">启用代理</div>
-              <div class="text-[11px] text-[#8b949e] mt-0.5">开启后浏览器通过代理地址访问网络</div>
-            </div>
-            <button @click="form.proxy_enabled=!form.proxy_enabled" class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
-                    :class="form.proxy_enabled?'bg-[#1f6feb]':'bg-[#30363d]'">
-              <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
-                    :class="form.proxy_enabled?'translate-x-5':'translate-x-0'"></span>
-            </button>
-          </div>
-          <div class="flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-3.5">
-            <div>
-              <div class="text-[#e6edf3] text-[13px] font-medium">无头浏览器模式</div>
-              <div class="text-[11px] text-[#8b949e] mt-0.5">开启后浏览器在后台运行, 不显示窗口</div>
-            </div>
-            <button @click="form.headless=!form.headless" class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
-                    :class="form.headless?'bg-[#1f6feb]':'bg-[#30363d]'">
-              <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
-                    :class="form.headless?'translate-x-5':'translate-x-0'"></span>
-            </button>
-          </div>
-          <div>
-            <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">全局并发数</label>
-            <div class="flex items-center gap-3">
-              <input v-model.number="form.concurrency" type="number" min="1" max="20" class="w-20 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition text-center">
-              <p class="text-[10px] text-[#484f58]">同时处理的子号数量，跨所有批次共享</p>
-            </div>
-          </div>
-        </div>
+        <!-- Left Column -->
+        <div class="space-y-6">
 
-        <!-- CPA -->
-        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6 space-y-5">
-          <div class="flex items-center gap-2 mb-1">
-            <svg class="w-4 h-4 text-[#3fb950]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-            <span class="text-[#e6edf3] font-semibold text-[14px]">CPA 配置</span>
-          </div>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">API 地址</label>
-              <input v-model="form.cpa_api_url" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="http://103.30.76.230:8317">
+          <!-- Browser -->
+          <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6 space-y-5">
+            <div class="flex items-center gap-2 mb-1">
+              <svg class="w-4 h-4 text-[#58a6ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <span class="text-[#e6edf3] font-semibold text-[14px]">浏览器</span>
             </div>
-            <div>
-              <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">Token</label>
-              <input v-model="form.cpa_token" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="your-token">
-            </div>
-          </div>
-        </div>
-
-        <!-- SMS -->
-        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6 space-y-5">
-          <div class="flex items-center gap-2 mb-1">
-            <svg class="w-4 h-4 text-[#d29922]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-            <span class="text-[#e6edf3] font-semibold text-[14px]">短信平台</span>
-          </div>
-          <div class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">API 用户名</label>
-                <input v-model="form.sms_username" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="API Username">
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">代理地址</label>
+                <input v-model="form.proxy" :disabled="!form.proxy_enabled" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition disabled:opacity-40 disabled:cursor-not-allowed" placeholder="http://127.0.0.1:10808">
               </div>
               <div>
-                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">API 密码</label>
-                <input v-model="form.sms_password" type="password" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="API Password">
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">Web 端口</label>
+                <input v-model.number="form.port" type="number" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="8080">
+                <p class="text-[10px] text-[#484f58] mt-1">修改端口后需重启程序</p>
               </div>
+            </div>
+            <div class="flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-3">
+              <div>
+                <div class="text-[#e6edf3] text-[13px] font-medium">启用代理</div>
+                <div class="text-[11px] text-[#8b949e] mt-0.5">开启后浏览器通过代理地址访问网络</div>
+              </div>
+              <button @click="form.proxy_enabled=!form.proxy_enabled" class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
+                      :class="form.proxy_enabled?'bg-[#1f6feb]':'bg-[#30363d]'">
+                <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                      :class="form.proxy_enabled?'translate-x-5':'translate-x-0'"></span>
+              </button>
+            </div>
+            <div class="flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-3">
+              <div>
+                <div class="text-[#e6edf3] text-[13px] font-medium">无头浏览器模式</div>
+                <div class="text-[11px] text-[#8b949e] mt-0.5">开启后浏览器在后台运行, 不显示窗口</div>
+              </div>
+              <button @click="form.headless=!form.headless" class="relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
+                      :class="form.headless?'bg-[#1f6feb]':'bg-[#30363d]'">
+                <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                      :class="form.headless?'translate-x-5':'translate-x-0'"></span>
+              </button>
             </div>
             <div>
-              <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">频道 ID (对接码)</label>
-              <div class="space-y-2">
-                <div v-for="(ch, i) in form.sms_channel_ids" :key="i" class="flex items-center gap-2">
-                  <span class="text-[11px] text-[#484f58] w-4 text-right shrink-0">{{i+1}}</span>
-                  <input v-model="form.sms_channel_ids[i]" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" :placeholder="'频道 '+(i+1)">
-                </div>
+              <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">全局并发数</label>
+              <div class="flex items-center gap-3">
+                <input v-model.number="form.concurrency" type="number" min="1" max="20" class="w-20 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition text-center">
+                <p class="text-[10px] text-[#484f58]">同时处理的子号数量，跨所有批次共享</p>
               </div>
-              <p class="text-[10px] text-[#484f58] mt-1">获取手机号时从频道 1 开始，失败则自动切换下一个频道</p>
             </div>
           </div>
-        </div>
 
-        <!-- Age Verification / Credit Card -->
-        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6 space-y-5">
-          <div class="flex items-center gap-2 mb-1">
-            <svg class="w-4 h-4 text-[#bc8cff]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-            <span class="text-[#e6edf3] font-semibold text-[14px]">年龄验证 (信用卡)</span>
+          <!-- CPA -->
+          <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6 space-y-5">
+            <div class="flex items-center gap-2 mb-1">
+              <svg class="w-4 h-4 text-[#3fb950]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+              <span class="text-[#e6edf3] font-semibold text-[14px]">CPA 配置</span>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">API 地址</label>
+                <input v-model="form.cpa_api_url" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="http://103.30.76.230:8317">
+              </div>
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">Token</label>
+                <input v-model="form.cpa_token" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="your-token">
+              </div>
+            </div>
           </div>
-          <p class="text-[11px] text-[#8b949e]">额度异常时自动使用信用卡完成 Google 年龄验证, 不会产生实际扣费</p>
-          <div class="space-y-4">
+
+          <!-- Age Verification -->
+          <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6 space-y-5">
+            <div class="flex items-center gap-2 mb-1">
+              <svg class="w-4 h-4 text-[#bc8cff]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+              <span class="text-[#e6edf3] font-semibold text-[14px]">年龄验证 (信用卡)</span>
+            </div>
+            <p class="text-[11px] text-[#8b949e]">额度异常时自动使用信用卡完成 Google 年龄验证, 不会产生实际扣费</p>
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">卡号</label>
@@ -164,22 +137,109 @@
               </div>
             </div>
           </div>
+
         </div>
 
-        <!-- Save -->
-        <div class="flex justify-end">
-          <button @click="saveConfig" :disabled="saving" class="bg-[#238636] hover:bg-[#2ea043] disabled:opacity-40 disabled:cursor-not-allowed text-white text-[13px] font-medium px-6 py-2.5 rounded-lg transition">
-            {{saving?'保存中...':'保存配置'}}
-          </button>
+        <!-- Right Column -->
+        <div class="space-y-6">
+
+          <!-- SMS Platform -->
+          <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6 space-y-5">
+            <div class="flex items-center gap-2 mb-1">
+              <svg class="w-4 h-4 text-[#d29922]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              <span class="text-[#e6edf3] font-semibold text-[14px]">短信平台 (HeroSMS)</span>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">API 地址</label>
+                <input v-model="form.sms_api_url" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="https://hero-sms.com/stubs/handler_api.php">
+              </div>
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">API Key</label>
+                <input v-model="form.sms_api_key" type="password" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="your-api-key">
+              </div>
+
+              <!-- Country selector -->
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">国家</label>
+                <div class="flex gap-2">
+                  <div class="relative flex-1">
+                    <input v-model="countrySearch" @focus="showCountryList=true" @input="showCountryList=true"
+                           class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition"
+                           :placeholder="form.sms_country?('ID: '+form.sms_country+' — '+countryName):'搜索国家...'">
+                    <div v-if="showCountryList && filteredCountries.length" class="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl">
+                      <div v-for="c in filteredCountries" :key="c.id" @mousedown.prevent="selectCountry(c)"
+                           class="px-3 py-2 text-[12px] hover:bg-[#21262d] cursor-pointer transition flex justify-between"
+                           :class="form.sms_country===c.id?'text-[#58a6ff] bg-[#58a6ff10]':'text-[#c9d1d9]'">
+                        <span>{{c.chn||c.eng}}</span>
+                        <span class="text-[#484f58]">{{c.id}}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button @click="loadCountries" :disabled="loadingCountries" class="px-3 py-2.5 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-lg text-[12px] text-[#8b949e] hover:text-[#c9d1d9] transition shrink-0 disabled:opacity-40">
+                    {{loadingCountries?'...':'加载'}}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Service selector -->
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">服务</label>
+                <div class="flex gap-2">
+                  <div class="relative flex-1">
+                    <input v-model="serviceSearch" @focus="showServiceList=true" @input="showServiceList=true"
+                           class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition"
+                           :placeholder="form.sms_service?('代码: '+form.sms_service+' — '+serviceName):'搜索服务...'">
+                    <div v-if="showServiceList && filteredServices.length" class="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl">
+                      <div v-for="s in filteredServices" :key="s.code" @mousedown.prevent="selectService(s)"
+                           class="px-3 py-2 text-[12px] hover:bg-[#21262d] cursor-pointer transition flex justify-between"
+                           :class="form.sms_service===s.code?'text-[#58a6ff] bg-[#58a6ff10]':'text-[#c9d1d9]'">
+                        <span>{{s.name}}</span>
+                        <span class="text-[#484f58] font-mono">{{s.code}}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button @click="loadServices" :disabled="loadingServices||!form.sms_country" class="px-3 py-2.5 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-lg text-[12px] text-[#8b949e] hover:text-[#c9d1d9] transition shrink-0 disabled:opacity-40">
+                    {{loadingServices?'...':'加载'}}
+                  </button>
+                </div>
+                <p class="text-[10px] text-[#484f58] mt-1">先选择国家, 再加载该国可用的服务列表</p>
+              </div>
+
+              <!-- Price info -->
+              <div v-if="priceInfo" class="bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-3 flex items-center justify-between">
+                <div class="flex gap-4 text-[12px]">
+                  <span class="text-[#8b949e]">单价: <b class="text-[#e6edf3]">${{priceInfo.cost}}</b></span>
+                  <span class="text-[#8b949e]">可用: <b class="text-[#3fb950]">{{priceInfo.count}}</b> 个号码</span>
+                </div>
+                <button @click="loadPrice" class="text-[10px] text-[#58a6ff] hover:text-[#79c0ff] transition cursor-pointer">刷新</button>
+              </div>
+
+              <!-- Test button -->
+              <div class="flex items-center gap-3">
+                <button @click="testGetNumber" :disabled="testing||!form.sms_service||!form.sms_country"
+                        class="px-4 py-2.5 bg-[#1f6feb] hover:bg-[#388bfd] disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-medium rounded-lg transition">
+                  {{testing?'测试中...':'测试获取号码'}}
+                </button>
+                <span v-if="testResult" class="text-[12px]" :class="testResult.ok?'text-[#3fb950]':'text-[#f85149]'">{{testResult.msg}}</span>
+              </div>
+            </div>
+          </div>
+
         </div>
 
       </div>
-      <div v-else class="flex items-center justify-center h-full text-[#484f58]">加载中...</div>
+
+      <!-- Save -->
+      <div class="flex justify-end mt-6">
+        <button @click="saveConfig" :disabled="saving" class="bg-[#238636] hover:bg-[#2ea043] disabled:opacity-40 disabled:cursor-not-allowed text-white text-[13px] font-medium px-6 py-2.5 rounded-lg transition">
+          {{saving?'保存中...':'保存配置'}}
+        </button>
+      </div>
+
     </div>
+    <div v-else class="flex items-center justify-center h-full text-[#484f58]">加载中...</div>
   </div>
-
-
-
 </div>
 
 <script src="/js/settings.js"></script>

@@ -2,9 +2,10 @@ proxy: http://127.0.0.1:10808
 proxy_enabled: false
 cpa_token: your-cpa-token
 cpa_api_url: http://127.0.0.1:8317
-sms_username: your-api-username
-sms_password: your-api-password
-sms_channel_id: "your-channel-id"
+sms_api_url: https://hero-sms.com/stubs/handler_api.php
+sms_api_key: ""
+sms_service: "go"
+sms_country: 2
 card_number: ""
 card_expiry: ""
 card_cvv: ""

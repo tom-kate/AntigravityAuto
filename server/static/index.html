@@ -34,6 +34,9 @@
         <span class="flex items-center gap-1.5 text-[#8b949e]"><span class="w-1.5 h-1.5 rounded-full bg-[#58a6ff]"></span>母号 <b class="text-[#e6edf3]">{{masters.length}}</b></span>
         <span class="flex items-center gap-1.5 text-[#8b949e]"><span class="w-1.5 h-1.5 rounded-full bg-[#3fb950]"></span>子号 <b class="text-[#e6edf3]">{{totalSubs}}</b></span>
         <span class="flex items-center gap-1.5 text-[#8b949e]"><span class="w-1.5 h-1.5 rounded-full bg-[#d29922]"></span>CPA <b class="text-[#e6edf3]">{{cpaFiles.length}}</b></span>
+        <span class="flex items-center gap-1.5 text-[#8b949e] cursor-pointer hover:text-[#c9d1d9] transition" @click="refreshSMSBalance" :title="'点击刷新'">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#bc8cff]"></span>SMS <b class="text-[#e6edf3]">{{smsBalance!==null?('$'+smsBalance.toFixed(2)):'--'}}</b>
+        </span>
       </div>
       <div class="w-px h-5 bg-[#30363d]"></div>
       <button @click="refreshAllQuotas" :disabled="quotaLoading"
@@ -126,7 +129,7 @@
                     <span class="font-mono text-[13px] text-[#c9d1d9] truncate w-[160px] shrink-0 cursor-pointer hover:text-[#58a6ff] transition" :title="a.email" @click.stop="showSubInfo(a)">{{a.email}}</span>
                     <span class="inline-flex items-center gap-1 shrink-0">
                       <span class="w-1.5 h-1.5 rounded-full" :class="dotClass(a.status)"></span>
-                      <span class="text-[11px]" :class="statusColor(a.status)">{{statusLabel(a.status)}}</span>
+                      <span class="text-[11px]" :class="statusColor(a.status)">{{a.operation_status || statusLabel(a.status)}}</span>
                     </span>
                     <template v-if="getCPAFile(a.email)">
                       <span class="text-[10px] font-medium px-2 py-0.5 rounded-md cursor-pointer shrink-0" :class="cpaLabelClass(getCPAFile(a.email))"
@@ -378,10 +381,14 @@
           </div>
           <button v-if="subDetail.two_fa" @click="copyText(subDetail.two_fa)" class="text-[10px] text-[#58a6ff] bg-[#58a6ff15] hover:bg-[#58a6ff25] px-2.5 py-1 rounded-md transition font-medium">复制</button>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-3 gap-3">
           <div class="bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
             <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">状态</div>
             <div class="text-[13px] font-medium" :class="statusColor(subDetail.status==='成功'?'success':subDetail.status==='失败'?'failed':subDetail.status==='异常'?'error':'pending')">{{subDetail.status}}</div>
+          </div>
+          <div class="bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
+            <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">操作状态</div>
+            <div class="text-[13px] text-[#c9d1d9]">{{subDetail.operation_status||'--'}}</div>
           </div>
           <div class="bg-[#0d1117] rounded-lg px-4 py-3 border border-[#21262d]">
             <div class="text-[10px] text-[#8b949e] uppercase tracking-wider font-medium mb-1">当前步骤</div>

@@ -346,62 +346,62 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 
 		err := runSingleAttempt(pw, account, batchID, idx)
 		if err == nil {
-			updateStatus(batchID, idx, db.StatusSuccess, "done", "")
+			updateStatusWithOp(batchID, idx, db.StatusSuccess, "done", "", "成功")
 			L.OK(email, "全部完成")
 			return
 		}
 
 		// Recaptcha: mark as error and skip, no retry
 		if err == errRecaptcha {
-			updateStatus(batchID, idx, db.StatusError, "recaptcha", "出现人机验证")
+			updateStatusWithOp(batchID, idx, db.StatusError, "recaptcha", "出现人机验证", "人机验证")
 			return
 		}
 
 		// Manual check: mark and skip, no retry
 		if err == errManualCheck {
-			updateStatus(batchID, idx, db.StatusError, "manual_check", "CPA 未返回手机绑定链接, 等待人工绑定")
+			updateStatusWithOp(batchID, idx, db.StatusError, "manual_check", "CPA 未返回手机绑定链接, 等待人工绑定", "等待人工绑定")
 			return
 		}
 
 		// Upload failed: mark and skip, no retry
 		if err == errUploadFailed {
-			updateStatus(batchID, idx, db.StatusError, "upload_failed", "凭证上传 CPA 失败 (已重试3次)")
+			updateStatusWithOp(batchID, idx, db.StatusError, "upload_failed", "凭证上传 CPA 失败 (已重试3次)", "凭证上传失败")
 			return
 		}
 
 		// Need restart: mark and skip, no retry
 		if err == errNeedRestart {
-			updateStatus(batchID, idx, db.StatusError, "need_restart", "无需手机绑定, 需要重新授权")
+			updateStatusWithOp(batchID, idx, db.StatusError, "need_restart", "无需手机绑定, 需要重新授权", "需要重新授权")
 			return
 		}
 
 		// Quota dead: mark and skip, no retry
 		if err == errQuotaDead {
-			updateStatus(batchID, idx, db.StatusFailed, "quota_dead", "额度刷新时间超过5小时, 账号判定死亡")
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "quota_dead", "额度刷新时间超过5小时, 账号判定死亡", "账号死亡")
 			return
 		}
 
 		// Age verification failed (card invalid): mark as failed, no retry
 		if err == errAgeVerification {
-			updateStatus(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 信用卡验证失败")
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 信用卡验证失败", "年龄异常")
 			return
 		}
 
 		// Age verification needed but card known bad: mark as failed, no retry
 		if err == errAgeNeedVerify {
-			updateStatus(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 需要年龄验证")
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 需要年龄验证", "年龄异常")
 			return
 		}
 
 		// Family country mismatch: mark as failed, no retry
 		if err == errFamilyCountry {
-			updateStatus(batchID, idx, db.StatusFailed, "family_country", "国家不支持, 无法加入家庭组")
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "family_country", "国家不支持, 无法加入家庭组", "国家不支持")
 			return
 		}
 
 		// Already in another family group: mark as failed, no retry
 		if err == errFamilyAlreadyInGroup {
-			updateStatus(batchID, idx, db.StatusFailed, "family_already_in_group", "已在其他家庭组中, 无法加入")
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "family_already_in_group", "已在其他家庭组中, 无法加入", "已在家庭组")
 			return
 		}
 
@@ -412,7 +412,7 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 			updateStatus(batchID, idx, db.StatusRunning, "retry_wait", errMsg)
 			time.Sleep(10 * time.Second)
 		} else {
-			updateStatus(batchID, idx, db.StatusFailed, "exhausted", errMsg)
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "exhausted", errMsg, "重试耗尽")
 		}
 	}
 }

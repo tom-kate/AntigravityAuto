@@ -61,12 +61,10 @@ proxy: http://127.0.0.1:10808    # 代理地址
 proxy_enabled: false              # 是否启用代理
 cpa_token: your-cpa-token        # CPA 平台 Token
 cpa_api_url: http://127.0.0.1:8317  # CPA 平台地址
-sms_username: your-username       # SMS 平台用户名
-sms_password: your-password       # SMS 平台密码
-sms_channel_ids:                  # SMS 频道 ID（按顺序尝试）
-  - "channel-1"
-  - "channel-2"
-  - "channel-3"
+sms_api_url: https://hero-sms.com/stubs/handler_api.php  # SMS 平台地址
+sms_api_key: your-api-key        # SMS 平台 API Key
+sms_service: "go"                # SMS 服务代码（如 go=Google）
+sms_country: 2                   # SMS 国家 ID
 headless: false                   # 无头模式（服务器部署设为 true）
 concurrency: 1                    # 全局并发数（1-20）
 port: 8080                        # Web 端口

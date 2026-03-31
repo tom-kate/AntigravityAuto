@@ -54,8 +54,9 @@ func doAgeVerify(email string, page playwright.Page) error {
 	}
 
 	// Wait for the credit card form to load (pjax page, wait for input fields)
+	// IDs like i4/i10/i14 are dynamic, use label text to find inputs
 	L.Info(email, "等待信用卡表单加载...")
-	cardNumberInput := agePage.Locator(`input[aria-labelledby="i4"]`)
+	cardNumberInput := agePage.Locator(`span.VfPpkd-NLUYnc-V67aGc:has-text("Card number")`).Locator("xpath=ancestor::label").Locator("input")
 	if err := cardNumberInput.WaitFor(playwright.LocatorWaitForOptions{
 		Timeout: playwright.Float(30000),
 	}); err != nil {
@@ -71,21 +72,21 @@ func doAgeVerify(email string, page playwright.Page) error {
 	time.Sleep(500 * time.Millisecond)
 
 	// Fill expiry (MM/YY)
-	expiryInput := agePage.Locator(`input[aria-label*="Expiration date"]`)
+	expiryInput := agePage.Locator(`span.VfPpkd-NLUYnc-V67aGc:has-text("MM/YY")`).Locator("xpath=ancestor::label").Locator("input")
 	if err := expiryInput.Fill(cfg.CardExpiry); err != nil {
 		return fmt.Errorf("age_verify: fill expiry failed: %w", err)
 	}
 	time.Sleep(500 * time.Millisecond)
 
 	// Fill CVV
-	cvvInput := agePage.Locator(`input[aria-labelledby="i14"]`)
+	cvvInput := agePage.Locator(`span.VfPpkd-NLUYnc-V67aGc:has-text("Security code")`).Locator("xpath=ancestor::label").Locator("input")
 	if err := cvvInput.Fill(cfg.CardCVV); err != nil {
 		return fmt.Errorf("age_verify: fill CVV failed: %w", err)
 	}
 	time.Sleep(500 * time.Millisecond)
 
 	// Fill zip code
-	zipInput := agePage.Locator(`input[autocomplete="postal-code"]`)
+	zipInput := agePage.Locator(`span.VfPpkd-NLUYnc-V67aGc:has-text("Billing zip code")`).Locator("xpath=ancestor::label").Locator("input")
 	if err := zipInput.Fill(cfg.CardZip); err != nil {
 		return fmt.Errorf("age_verify: fill zip failed: %w", err)
 	}

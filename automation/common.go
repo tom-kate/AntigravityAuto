@@ -45,3 +45,7 @@ func checkRecaptcha(pageURL string) bool {
 func updateStatus(batchID string, idx int, status db.SubAccountStatus, step string, errMsg string) {
 	db.DB.UpdateSubAccount(batchID, idx, status, step, errMsg)
 }
+
+func updateStatusWithOp(batchID string, idx int, status db.SubAccountStatus, step string, errMsg string, opStatus string) {
+	db.DB.UpdateSubAccountWithOp(batchID, idx, status, step, errMsg, opStatus)
+}

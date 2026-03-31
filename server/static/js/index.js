@@ -2,6 +2,7 @@ const {createApp,ref,reactive,computed,onMounted,onUnmounted} = Vue;
 createApp({
   setup(){
     const masters=ref([]),batches=ref([]),cpaFiles=ref([]);
+    const smsBalance=ref(null);
     const quotas=reactive({});
     const quotaLoading=ref(false);
     const quotaLoadingSet=reactive({});
@@ -10,7 +11,7 @@ createApp({
     const subModal=ref({show:false,type:'batch',masterID:'',text:'',concurrency:1});
     const cpaModal=ref({show:false,email:'',statusText:'',labelCls:'',json:'',jsonColor:''});
     const masterDetail=ref({show:false,email:'',password:'',aux_email:'',two_fa_link:'',remark:''});
-    const subDetail=ref({show:false,email:'',password:'',aux_email:'',two_fa:'',status:'',step:'',phone_bound:false});
+    const subDetail=ref({show:false,email:'',password:'',aux_email:'',two_fa:'',status:'',operation_status:'',step:'',phone_bound:false});
     let timer=null,cpaTimer=null;
 
     function showToast(msg,ok=true){
@@ -21,7 +22,7 @@ createApp({
 
     // Status & steps
     const SL={pending:'等待中',running:'运行中',success:'成功',failed:'失败',error:'异常',finished:'已完成'};
-    const SP={starting:'启动中',login:'登录',oauth:'OAuth授权',check_cpa:'CPA检测',phone_bind:'绑定手机',delete_cpa:'删除凭证',oauth_redo:'重新授权',done:'完成',retry_wait:'重试等待',exhausted:'已耗尽',recaptcha:'人机验证',manual_check:'等待人工绑定',upload_failed:'凭证上传失败',need_restart:'需要重启'};
+    const SP={starting:'启动中',login:'登录',family_accept:'加入家庭组',oauth:'OAuth授权',check_quota:'检查额度',age_verify:'年龄验证',check_cpa:'CPA检测',phone_bind:'绑定手机',delete_cpa:'删除凭证',oauth_redo:'重新授权',done:'完成',retry_wait:'重试等待',exhausted:'已耗尽',recaptcha:'人机验证',manual_check:'等待人工绑定',upload_failed:'凭证上传失败',need_restart:'需要重启',quota_dead:'账号死亡',family_country:'国家不支持',family_already_in_group:'已在家庭组'};
     function statusLabel(s){return SL[s]||s}
     function stepLabel(s){return SP[s]||s||'--'}
     function statusColor(s){return{success:'text-[#3fb950]',failed:'text-[#f85149]',error:'text-[#d29922]',running:'text-[#58a6ff]',pending:'text-[#484f58]'}[s]||'text-[#484f58]'}
@@ -60,6 +61,7 @@ createApp({
     function getCPAFile(email){const e=email.toLowerCase();return cpaFiles.value.find(f=>(f.account||'').toLowerCase()===e||(f.email||'').toLowerCase()===e)||null}
     async function loadMain(){try{const[mr,br]=await Promise.all([axios.get('/api/masters'),axios.get('/api/batches')]);masters.value=mr.data||[];batches.value=br.data||[]}catch(e){console.error(e)}}
     async function loadCPA(){try{const cr=await axios.get('/api/cpa-files');cpaFiles.value=cr.data||[]}catch(e){console.error(e)}}
+    async function refreshSMSBalance(){try{const r=await axios.get('/api/sms-balance');smsBalance.value=r.data.balance}catch(e){console.error(e)}}
 
     // Quota refresh
     async function refreshAllQuotas(){if(quotaLoading.value)return;quotaLoading.value=true;const tasks=[];for(const f of cpaFiles.value){if(f.auth_index){const e=(f.email||f.account).toLowerCase();tasks.push({email:e,authIndex:f.auth_index});}}if(!tasks.length){quotaLoading.value=false;showToast('没有可查询额度的凭证',false);return}for(const t of tasks)quotaLoadingSet[t.email]=true;let ok=0,fail=0;await Promise.all(tasks.map(async t=>{try{const r=await axios.get('/api/cpa-quota?auth_index='+encodeURIComponent(t.authIndex));if(r.data&&r.data.length){quotas[t.email]=r.data;ok++}else{fail++}}catch(e){fail++}finally{delete quotaLoadingSet[t.email]}}));quotaLoading.value=false;showToast('额度刷新: '+ok+'成功'+(fail?' / '+fail+'失败':''));}
@@ -72,7 +74,7 @@ createApp({
     function showMasterInfo(m){masterDetail.value={show:true,email:m.email,password:m.password,aux_email:m.aux_email||'',two_fa_link:m.two_fa_link||'',remark:m.remark||'无'}}
     function copyText(text){navigator.clipboard.writeText(text).then(()=>showToast('已复制')).catch(()=>{})}
     function copyMasterFull(){const d=masterDetail.value;const t=[d.email,d.password,d.aux_email,d.two_fa_link].join('----');copyText(t)}
-    function showSubInfo(a){subDetail.value={show:true,email:a.email,password:a.password,aux_email:a.aux_email||'',two_fa:a.two_fa||'',status:statusLabel(a.status),step:stepLabel(a.step),phone_bound:a.phone_bound}}
+    function showSubInfo(a){subDetail.value={show:true,email:a.email,password:a.password,aux_email:a.aux_email||'',two_fa:a.two_fa||'',status:statusLabel(a.status),operation_status:a.operation_status||'',step:stepLabel(a.step),phone_bound:a.phone_bound}}
     function copySubFull(){const d=subDetail.value;const t=[d.email,d.password,d.aux_email,d.two_fa].join('---');copyText(t)}
     function parseMaster(line){const p=line.split('----');if(p.length<2)return null;return{email:p[0].trim(),password:p[1].trim(),aux_email:(p[2]||'').trim(),two_fa_link:(p[3]||'').trim()}}
     async function addMaster(){const m=parseMaster(masterInput.value);if(!m){showToast('格式错误',false);return}if(addExpiry.value)m.expires_at=new Date(addExpiry.value+'T23:59:59').toISOString();if(addPurchased.value)m.purchased_at=new Date(addPurchased.value+'T00:00:00').toISOString();if(addRemark.value)m.remark=addRemark.value;try{await axios.post('/api/masters',m);showToast('添加成功');masterInput.value='';addExpiry.value='';addPurchased.value='';addRemark.value='';showAddModal.value=false;loadMain()}catch(e){showToast(e.response?.data?.error||'添加失败',false)}}
@@ -110,11 +112,11 @@ createApp({
     async function setSuccess(bid,idx){try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/success');showToast('已设为成功');loadMain()}catch(e){showToast(e.response?.data?.error||'操作失败',false)}}
     async function delAccount(bid,idx){if(!confirm('确认删除？'))return;try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/delete');showToast('已删除');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
 
-    onMounted(async()=>{await loadMain();await loadCPA();timer=setInterval(loadMain,3000);cpaTimer=setInterval(loadCPA,30000);});
+    onMounted(async()=>{await loadMain();await loadCPA();refreshSMSBalance();timer=setInterval(loadMain,3000);cpaTimer=setInterval(loadCPA,30000);});
     onUnmounted(()=>{clearInterval(timer);clearInterval(cpaTimer)});
 
-    return{masters,batches,cpaFiles,quotas,quotaLoading,quotaLoadingSet,masterInput,addExpiry,addPurchased,addRemark,showAddModal,cpaModal,masterDetail,subDetail,totalSubs,
-      editingId,editRemark,editExpiry,startEdit,saveEdit,toggleWeeklyLimit,refreshAllQuotas,refreshSingleQuota,get2FA,
+    return{masters,batches,cpaFiles,smsBalance,quotas,quotaLoading,quotaLoadingSet,masterInput,addExpiry,addPurchased,addRemark,showAddModal,cpaModal,masterDetail,subDetail,totalSubs,
+      editingId,editRemark,editExpiry,startEdit,saveEdit,toggleWeeklyLimit,refreshAllQuotas,refreshSingleQuota,refreshSMSBalance,get2FA,
       subModal,openSubModal,submitSubModal,showMasterInfo,copyText,copyMasterFull,showSubInfo,copySubFull,warrantyStatus,
       statusLabel,stepLabel,statusColor,dotClass,batchLabel,batchColor,batchDot,cnt,hasNonSuccess,
       cpaStatusText,cpaLabelClass,cpaErrorType,showCPADetail,barColor,barTextColor,fmtReset,

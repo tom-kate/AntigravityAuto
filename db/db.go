@@ -23,16 +23,17 @@ const (
 )
 
 type SubAccount struct {
-	Email      string           `json:"email"`
-	Password   string           `json:"password"`
-	AuxEmail   string           `json:"aux_email"`
-	TwoFA      string           `json:"two_fa"`
-	Status     SubAccountStatus `json:"status"`
-	Retries    int              `json:"retries"`
-	Step       string           `json:"step"`
-	ErrorLog   []string         `json:"error_log"`
-	PhoneBound bool             `json:"phone_bound"`
-	FinishedAt *time.Time       `json:"finished_at,omitempty"`
+	Email           string           `json:"email"`
+	Password        string           `json:"password"`
+	AuxEmail        string           `json:"aux_email"`
+	TwoFA           string           `json:"two_fa"`
+	Status          SubAccountStatus `json:"status"`
+	OperationStatus string           `json:"operation_status"`
+	Retries         int              `json:"retries"`
+	Step            string           `json:"step"`
+	ErrorLog        []string         `json:"error_log"`
+	PhoneBound      bool             `json:"phone_bound"`
+	FinishedAt      *time.Time       `json:"finished_at,omitempty"`
 }
 
 type MasterAccount struct {
@@ -150,6 +151,7 @@ func Init(dbPath string) error {
 
 	// Auto-migrate: add columns that may not exist yet
 	sqlDB.Exec("ALTER TABLE masters ADD COLUMN purchased_at TEXT")
+	sqlDB.Exec("ALTER TABLE sub_accounts ADD COLUMN operation_status TEXT DEFAULT ''")
 
 	DB = &Database{db: sqlDB}
 	return nil
@@ -194,7 +196,7 @@ func scanSubAccounts(querier interface {
 	Query(query string, args ...any) (*sql.Rows, error)
 }, batchID string) []SubAccount {
 	rows, err := querier.Query(
-		`SELECT email, password, aux_email, two_fa, status, retries, step, error_log, phone_bound, finished_at
+		`SELECT email, password, aux_email, two_fa, status, operation_status, retries, step, error_log, phone_bound, finished_at
 		 FROM sub_accounts WHERE batch_id = ? ORDER BY idx`, batchID)
 	if err != nil {
 		return []SubAccount{}
@@ -203,31 +205,33 @@ func scanSubAccounts(querier interface {
 	var accounts []SubAccount
 	for rows.Next() {
 		var (
-			email      string
-			password   string
-			auxEmail   string
-			twoFA      string
-			status     string
-			retries    int
-			step       string
-			errorLog   string
-			phoneBound int
-			finishedAt sql.NullString
+			email           string
+			password        string
+			auxEmail        string
+			twoFA           string
+			status          string
+			operationStatus string
+			retries         int
+			step            string
+			errorLog        string
+			phoneBound      int
+			finishedAt      sql.NullString
 		)
-		if err := rows.Scan(&email, &password, &auxEmail, &twoFA, &status, &retries, &step, &errorLog, &phoneBound, &finishedAt); err != nil {
+		if err := rows.Scan(&email, &password, &auxEmail, &twoFA, &status, &operationStatus, &retries, &step, &errorLog, &phoneBound, &finishedAt); err != nil {
 			continue
 		}
 		accounts = append(accounts, SubAccount{
-			Email:      email,
-			Password:   password,
-			AuxEmail:   auxEmail,
-			TwoFA:      twoFA,
-			Status:     SubAccountStatus(status),
-			Retries:    retries,
-			Step:       step,
-			ErrorLog:   parseErrorLog(errorLog),
-			PhoneBound: phoneBound != 0,
-			FinishedAt: parseNullableTime(finishedAt),
+			Email:           email,
+			Password:        password,
+			AuxEmail:        auxEmail,
+			TwoFA:           twoFA,
+			Status:          SubAccountStatus(status),
+			OperationStatus: operationStatus,
+			Retries:         retries,
+			Step:            step,
+			ErrorLog:        parseErrorLog(errorLog),
+			PhoneBound:      phoneBound != 0,
+			FinishedAt:      parseNullableTime(finishedAt),
 		})
 	}
 	if accounts == nil {
@@ -613,6 +617,10 @@ func (d *Database) UpdateBatchStatus(batchID string, status BatchStatus) {
 }
 
 func (d *Database) UpdateSubAccount(batchID string, idx int, status SubAccountStatus, step string, errMsg string) {
+	d.UpdateSubAccountWithOp(batchID, idx, status, step, errMsg, "")
+}
+
+func (d *Database) UpdateSubAccountWithOp(batchID string, idx int, status SubAccountStatus, step string, errMsg string, operationStatus string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -642,9 +650,17 @@ func (d *Database) UpdateSubAccount(batchID string, idx int, status SubAccountSt
 		finishedAt = sql.NullString{String: time.Now().Format(time.RFC3339), Valid: true}
 	}
 
+	opStatusSQL := ""
+	args := []any{string(status), step, string(errLogJSON), retries}
+	if operationStatus != "" {
+		opStatusSQL = ", operation_status = ?"
+		args = append(args, operationStatus)
+	}
+	args = append(args, finishedAt, batchID, idx)
+
 	d.db.Exec(
-		`UPDATE sub_accounts SET status = ?, step = ?, error_log = ?, retries = ?, finished_at = COALESCE(?, finished_at) WHERE batch_id = ? AND idx = ?`,
-		string(status), step, string(errLogJSON), retries, finishedAt, batchID, idx,
+		`UPDATE sub_accounts SET status = ?, step = ?, error_log = ?, retries = ?`+opStatusSQL+`, finished_at = COALESCE(?, finished_at) WHERE batch_id = ? AND idx = ?`,
+		args...,
 	)
 }
 

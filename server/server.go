@@ -33,6 +33,11 @@ func Start(port int) error {
 	http.HandleFunc("/api/batch/", handleBatch)
 	http.HandleFunc("/api/cpa-files", handleCPAFiles)
 	http.HandleFunc("/api/cpa-quota", handleCPAQuota)
+	http.HandleFunc("/api/sms-balance", handleSMSBalance)
+	http.HandleFunc("/api/sms-countries", handleSMSCountries)
+	http.HandleFunc("/api/sms-services", handleSMSServices)
+	http.HandleFunc("/api/sms-prices", handleSMSPrices)
+	http.HandleFunc("/api/sms-test", handleSMSTest)
 	http.HandleFunc("/api/config", handleConfig)
 
 	addr := fmt.Sprintf(":%d", port)
@@ -365,4 +370,87 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, `{"error":"method not allowed"}`, 405)
 	}
+}
+
+func handleSMSBalance(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != "GET" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+	balance, err := api.GetSMSBalance()
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]float64{"balance": balance})
+}
+
+func handleSMSCountries(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != "GET" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+	countries, err := api.GetSMSCountries()
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(countries)
+}
+
+func handleSMSServices(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != "GET" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+	countryStr := r.URL.Query().Get("country")
+	country := 0
+	if countryStr != "" {
+		country, _ = strconv.Atoi(countryStr)
+	}
+	services, err := api.GetSMSServices(country)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(services)
+}
+
+func handleSMSPrices(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != "GET" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+	countryStr := r.URL.Query().Get("country")
+	service := r.URL.Query().Get("service")
+	country := 0
+	if countryStr != "" {
+		country, _ = strconv.Atoi(countryStr)
+	}
+	price, err := api.GetSMSPrices(country, service)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), 500)
+		return
+	}
+	json.NewEncoder(w).Encode(price)
+}
+
+func handleSMSTest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+	phone, activationID, err := api.TestGetNumber()
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), 500)
+		return
+	}
+	// Immediately cancel the test number
+	api.ReleasePhone(activationID)
+	json.NewEncoder(w).Encode(map[string]string{"phone": phone, "activation_id": activationID, "status": "ok (已自动释放)"})
 }

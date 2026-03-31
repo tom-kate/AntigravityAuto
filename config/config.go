@@ -15,14 +15,14 @@ type Config struct {
 	ProxyEnabled bool   `yaml:"proxy_enabled"  json:"proxy_enabled"`
 	CPAToken     string `yaml:"cpa_token"      json:"cpa_token"`
 	CPAAPIURL    string `yaml:"cpa_api_url"    json:"cpa_api_url"`
-	SMSUsername  string `yaml:"sms_username"   json:"sms_username"`
-	SMSPassword string `yaml:"sms_password"   json:"sms_password"`
-	SMSChannelID  string   `yaml:"sms_channel_id,omitempty"  json:"sms_channel_id,omitempty"`  // deprecated: use sms_channel_ids
-	SMSChannelIDs []string `yaml:"sms_channel_ids"           json:"sms_channel_ids"`
-	CardNumber string `yaml:"card_number" json:"card_number"`
-	CardExpiry string `yaml:"card_expiry" json:"card_expiry"`
-	CardCVV    string `yaml:"card_cvv"    json:"card_cvv"`
-	CardZip    string `yaml:"card_zip"    json:"card_zip"`
+	SMSApiURL    string `yaml:"sms_api_url"    json:"sms_api_url"`
+	SMSApiKey    string `yaml:"sms_api_key"    json:"sms_api_key"`
+	SMSService   string `yaml:"sms_service"    json:"sms_service"`
+	SMSCountry   int    `yaml:"sms_country"    json:"sms_country"`
+	CardNumber   string `yaml:"card_number"    json:"card_number"`
+	CardExpiry   string `yaml:"card_expiry"    json:"card_expiry"`
+	CardCVV      string `yaml:"card_cvv"       json:"card_cvv"`
+	CardZip      string `yaml:"card_zip"       json:"card_zip"`
 	Headless     bool   `yaml:"headless"       json:"headless"`
 	Concurrency  int    `yaml:"concurrency"    json:"concurrency"`
 	Port         int    `yaml:"port"           json:"port"`
@@ -91,10 +91,8 @@ func reload() error {
 		cfg.Port = 8080
 	}
 
-	// Migrate legacy sms_channel_id → sms_channel_ids
-	if cfg.SMSChannelID != "" && len(cfg.SMSChannelIDs) == 0 {
-		cfg.SMSChannelIDs = []string{cfg.SMSChannelID}
-		cfg.SMSChannelID = ""
+	if cfg.SMSApiURL == "" {
+		cfg.SMSApiURL = "https://hero-sms.com/stubs/handler_api.php"
 	}
 
 	App = cfg

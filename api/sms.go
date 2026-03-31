@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -14,13 +14,11 @@ import (
 	"antiauto/config"
 )
 
-// ─── SMS Platform Client ────────────────────────────────────────
+// ─── SMS Platform Client (HeroSMS / SMS-Activate compatible) ───
 
 var (
 	smsClient     *http.Client
 	smsClientOnce sync.Once
-	smsToken      string // runtime token, obtained via login
-	smsTokenMu    sync.RWMutex
 )
 
 func getSMSClient() *http.Client {
@@ -37,189 +35,251 @@ func getSMSClient() *http.Client {
 	return smsClient
 }
 
-func getSMSToken() string {
-	smsTokenMu.RLock()
-	defer smsTokenMu.RUnlock()
-	return smsToken
-}
-
-// ─── Login ──────────────────────────────────────────────────────
-
-type smsLoginResponse struct {
-	Data struct {
-		Token string `json:"token"`
-		Name  string `json:"name"`
-	} `json:"data"`
-	Msg     string `json:"msg"`
-	Status  int    `json:"status"`
-	Success bool   `json:"success"`
-}
-
-// SMSLogin logs into the SMS platform and stores the token.
-// Should be called once at startup.
-func SMSLogin() error {
+// smsRequest makes a GET request to the SMS API with the given action and extra params.
+func smsRequest(action string, extra map[string]string) (string, error) {
 	cfg := config.Get()
-	if cfg.SMSUsername == "" || cfg.SMSPassword == "" {
-		log.Println("短信平台: 未配置账号密码, 跳过登录")
-		return nil
+	if cfg.SMSApiKey == "" {
+		return "", fmt.Errorf("SMS API Key 未配置")
+	}
+	if cfg.SMSApiURL == "" {
+		return "", fmt.Errorf("SMS API URL 未配置")
 	}
 
-	apiURL := fmt.Sprintf("https://api.qc86.shop/api/login?username=%s&password=%s",
-		url.QueryEscape(cfg.SMSUsername), url.QueryEscape(cfg.SMSPassword))
+	u := fmt.Sprintf("%s?action=%s&api_key=%s", cfg.SMSApiURL, url.QueryEscape(action), url.QueryEscape(cfg.SMSApiKey))
+	for k, v := range extra {
+		u += fmt.Sprintf("&%s=%s", url.QueryEscape(k), url.QueryEscape(v))
+	}
 
-	resp, err := getSMSClient().Get(apiURL)
+	resp, err := getSMSClient().Get(u)
 	if err != nil {
-		return fmt.Errorf("短信平台登录请求失败: %w", err)
+		return "", fmt.Errorf("SMS API 请求失败: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-
-	var loginResp smsLoginResponse
-	if err := json.Unmarshal(body, &loginResp); err != nil {
-		return fmt.Errorf("短信平台登录响应解析失败: %w", err)
-	}
-
-	if !loginResp.Success || loginResp.Status != 200 || loginResp.Data.Token == "" {
-		return fmt.Errorf("短信平台登录失败: %s", loginResp.Msg)
-	}
-
-	smsTokenMu.Lock()
-	smsToken = loginResp.Data.Token
-	smsTokenMu.Unlock()
-
-	log.Printf("短信平台登录成功: %s (token: %s...)", loginResp.Data.Name, loginResp.Data.Token[:20])
-	return nil
+	return strings.TrimSpace(string(body)), nil
 }
 
-// ─── Response Types ─────────────────────────────────────────────
+// ─── Get Balance ───────────────────────────────────────────────
 
-type PhoneResponse struct {
-	Data struct {
-		Mobile  string `json:"mobile"`
-		SmsTask struct {
-			ID      int    `json:"id"`
-			PhoneNo string `json:"phoneNo"`
-		} `json:"smsTask"`
-	} `json:"data"`
-	Msg     string `json:"msg"`
-	Status  int    `json:"status"`
-	Success bool   `json:"success"`
-}
-
-type CodeResponse struct {
-	Data struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	} `json:"data"`
-	Msg     string `json:"msg"`
-	Status  int    `json:"status"`
-	Success bool   `json:"success"`
-}
-
-// ─── Get Phone Number ───────────────────────────────────────────
-
-func GetPhoneNumber(channelID string) (formatted string, raw string, phoneID string, err error) {
-	token := getSMSToken()
-	if token == "" {
-		return "", "", "", fmt.Errorf("短信平台未登录, 无 token")
-	}
-
-	apiURL := fmt.Sprintf("https://api.qc86.shop/api/getPhone?token=%s&channelId=%s&operator=0",
-		url.QueryEscape(token), url.QueryEscape(channelID))
-
-	resp, err := getSMSClient().Get(apiURL)
+// GetSMSBalance returns the current SMS platform balance.
+func GetSMSBalance() (float64, error) {
+	result, err := smsRequest("getBalance", nil)
 	if err != nil {
-		return "", "", "", err
+		return 0, err
 	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-
-	var phoneResp PhoneResponse
-	if err := json.Unmarshal(body, &phoneResp); err != nil {
-		return "", "", "", fmt.Errorf("解析手机号响应失败: %w (body: %s)", err, string(body))
+	// ACCESS_BALANCE:100.5
+	if !strings.HasPrefix(result, "ACCESS_BALANCE:") {
+		return 0, fmt.Errorf("SMS 余额查询失败: %s", result)
 	}
-
-	if !phoneResp.Success || phoneResp.Status != 200 {
-		return "", "", "", fmt.Errorf("获取手机号失败: %s", phoneResp.Msg)
+	balance, err := strconv.ParseFloat(strings.TrimPrefix(result, "ACCESS_BALANCE:"), 64)
+	if err != nil {
+		return 0, fmt.Errorf("SMS 余额解析失败: %s", result)
 	}
-
-	mobile := phoneResp.Data.Mobile
-	if mobile == "" {
-		mobile = phoneResp.Data.SmsTask.PhoneNo
-	}
-	if mobile == "" {
-		return "", "", "", fmt.Errorf("获取手机号失败: 返回为空")
-	}
-
-	// Format phone for Google input
-	// "(852)98477634" → "+852 98477634"
-	// "15664864435" → "+86 15664864435" (if no country code prefix)
-	mobileForInput := mobile
-	if strings.HasPrefix(mobileForInput, "(") {
-		parts := strings.SplitN(mobileForInput[1:], ")", 2)
-		if len(parts) == 2 {
-			mobileForInput = fmt.Sprintf("+%s %s", parts[0], parts[1])
-		}
-	}
-
-	// Use smsTask.ID as phoneID (for getCode compatibility)
-	pid := fmt.Sprintf("%d", phoneResp.Data.SmsTask.ID)
-
-	return mobileForInput, mobile, pid, nil
+	return balance, nil
 }
 
-// ─── Get SMS Code ───────────────────────────────────────────────
+// ─── Get Phone Number ──────────────────────────────────────────
 
-func GetSMSCode(rawPhoneNum, phoneID, channelID string) (string, error) {
-	token := getSMSToken()
-	if token == "" {
-		return "", fmt.Errorf("短信平台未登录, 无 token")
+// GetPhoneNumber requests a phone number for the configured service and country.
+// Returns: formatted phone for input, activationID, error
+func GetPhoneNumber() (formatted string, activationID string, err error) {
+	cfg := config.Get()
+	if cfg.SMSService == "" {
+		return "", "", fmt.Errorf("SMS 服务代码未配置")
 	}
 
-	for i := 0; i < 20; i++ {
-		apiURL := fmt.Sprintf("https://api.qc86.shop/api/getCode?token=%s&channelId=%s&phoneNum=%s",
-			url.QueryEscape(token), url.QueryEscape(channelID), url.QueryEscape(rawPhoneNum))
+	result, err := smsRequest("getNumber", map[string]string{
+		"service": cfg.SMSService,
+		"country": strconv.Itoa(cfg.SMSCountry),
+	})
+	if err != nil {
+		return "", "", err
+	}
 
-		resp, err := getSMSClient().Get(apiURL)
+	// ACCESS_NUMBER:activation_id:phone_number
+	if !strings.HasPrefix(result, "ACCESS_NUMBER:") {
+		return "", "", fmt.Errorf("获取手机号失败: %s", result)
+	}
+
+	parts := strings.SplitN(result, ":", 3)
+	if len(parts) != 3 {
+		return "", "", fmt.Errorf("获取手机号响应格式错误: %s", result)
+	}
+
+	activationID = parts[1]
+	phone := parts[2]
+
+	// Format: prepend + if not present
+	formattedPhone := phone
+	if !strings.HasPrefix(formattedPhone, "+") {
+		formattedPhone = "+" + formattedPhone
+	}
+
+	return formattedPhone, activationID, nil
+}
+
+// ─── Get SMS Code ──────────────────────────────────────────────
+
+// GetSMSCode polls for the SMS verification code for the given activation.
+func GetSMSCode(activationID string) (string, error) {
+	for i := 0; i < 40; i++ {
+		result, err := smsRequest("getStatus", map[string]string{
+			"id": activationID,
+		})
 		if err != nil {
 			return "", err
 		}
 
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-
-		var codeResp CodeResponse
-		if err := json.Unmarshal(body, &codeResp); err != nil {
-			return "", err
+		// STATUS_OK:code — code received
+		if strings.HasPrefix(result, "STATUS_OK:") {
+			code := strings.TrimPrefix(result, "STATUS_OK:")
+			return code, nil
 		}
 
-		if codeResp.Success && codeResp.Status == 200 && codeResp.Data.Code != "" {
-			return codeResp.Data.Code, nil
+		// STATUS_CANCEL — activation was canceled
+		if result == "STATUS_CANCEL" {
+			return "", fmt.Errorf("激活已被取消")
 		}
 
-		time.Sleep(2 * time.Second)
+		// STATUS_WAIT_CODE / STATUS_WAIT_RESEND — keep polling
+		time.Sleep(3 * time.Second)
 	}
 
-	return "", fmt.Errorf("获取短信验证码失败: 20次轮询后未收到")
+	return "", fmt.Errorf("获取短信验证码失败: 120秒轮询后未收到")
 }
 
-// ─── Release Phone ──────────────────────────────────────────────
+// ─── Set Status (complete / cancel) ────────────────────────────
 
-// ReleasePhone releases a phone number back to the pool.
-func ReleasePhone(phoneNo, channelID string) error {
-	token := getSMSToken()
-	if token == "" {
-		return nil
-	}
-	apiURL := fmt.Sprintf("https://api.qc86.shop/api/release?token=%s&channelId=%s&phoneNo=%s&status=2",
-		url.QueryEscape(token), url.QueryEscape(channelID), url.QueryEscape(phoneNo))
-
-	resp, err := getSMSClient().Get(apiURL)
+// SetActivationStatus sets the activation status.
+// status: 6 = complete, 8 = cancel
+func SetActivationStatus(activationID string, status int) error {
+	result, err := smsRequest("setStatus", map[string]string{
+		"id":     activationID,
+		"status": strconv.Itoa(status),
+	})
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
-	return nil
+
+	// Accept known success responses
+	switch result {
+	case "ACCESS_ACTIVATION", "ACCESS_CANCEL", "ACCESS_RETRY_GET":
+		return nil
+	}
+	return fmt.Errorf("设置激活状态失败: %s", result)
+}
+
+// ReleasePhone cancels an activation and returns the money.
+func ReleasePhone(activationID string) error {
+	return SetActivationStatus(activationID, 8)
+}
+
+// ─── Countries & Services (for settings UI) ────────────────────
+
+type SMSCountry struct {
+	ID      int    `json:"id"`
+	Eng     string `json:"eng"`
+	Chn     string `json:"chn"`
+	Visible int    `json:"visible"`
+}
+
+type SMSService struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+// GetSMSCountries returns available countries.
+func GetSMSCountries() ([]SMSCountry, error) {
+	result, err := smsRequest("getCountries", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var countries []SMSCountry
+	if err := json.Unmarshal([]byte(result), &countries); err != nil {
+		return nil, fmt.Errorf("解析国家列表失败: %w (body: %.200s)", err, result)
+	}
+
+	// Filter to visible only
+	var visible []SMSCountry
+	for _, c := range countries {
+		if c.Visible == 1 {
+			visible = append(visible, c)
+		}
+	}
+	return visible, nil
+}
+
+type smsServicesResponse struct {
+	Status   string       `json:"status"`
+	Services []SMSService `json:"services"`
+}
+
+// GetSMSServices returns available services for the given country.
+func GetSMSServices(country int) ([]SMSService, error) {
+	result, err := smsRequest("getServicesList", map[string]string{
+		"country": strconv.Itoa(country),
+		"lang":    "cn",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var resp smsServicesResponse
+	if err := json.Unmarshal([]byte(result), &resp); err != nil {
+		return nil, fmt.Errorf("解析服务列表失败: %w (body: %.200s)", err, result)
+	}
+
+	if resp.Status != "success" {
+		return nil, fmt.Errorf("获取服务列表失败: %s", result)
+	}
+
+	return resp.Services, nil
+}
+
+// SMSPriceInfo holds price and availability for a service in a country.
+type SMSPriceInfo struct {
+	Cost  float64 `json:"cost"`
+	Count int     `json:"count"`
+}
+
+// GetSMSPrices returns prices for a specific country and service.
+func GetSMSPrices(country int, service string) (*SMSPriceInfo, error) {
+	params := map[string]string{
+		"country": strconv.Itoa(country),
+	}
+	if service != "" {
+		params["service"] = service
+	}
+
+	result, err := smsRequest("getPrices", params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Response: { "country_id": { "service_code": { "cost": 0.5, "count": 10 } } }
+	var data map[string]map[string]SMSPriceInfo
+	if err := json.Unmarshal([]byte(result), &data); err != nil {
+		return nil, fmt.Errorf("解析价格失败: %w (body: %.200s)", err, result)
+	}
+
+	countryStr := strconv.Itoa(country)
+	if countryData, ok := data[countryStr]; ok {
+		if priceInfo, ok := countryData[service]; ok {
+			return &priceInfo, nil
+		}
+	}
+
+	return nil, fmt.Errorf("未找到该服务的价格信息")
+}
+
+// TestGetNumber does a test: get a number then immediately cancel it.
+// Returns the phone number obtained.
+func TestGetNumber() (string, string, error) {
+	formatted, activationID, err := GetPhoneNumber()
+	if err != nil {
+		return "", "", err
+	}
+	return formatted, activationID, nil
 }

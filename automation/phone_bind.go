@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"antiauto/api"
-	"antiauto/config"
 	"antiauto/db"
 	L "antiauto/logger"
 
@@ -54,7 +53,7 @@ func doPhoneBind(email string, page playwright.Page, validationURL string, batch
 			for j := 0; j < 20; j++ {
 				time.Sleep(2 * time.Second)
 				if !strings.Contains(page.URL(), "/uplevelingstep/selection") {
-					L.OK(email, fmt.Sprintf("已离开选择页面"))
+					L.OK(email, "已离开选择页面")
 					break
 				}
 			}
@@ -87,24 +86,14 @@ func doPhoneBind(email string, page playwright.Page, validationURL string, batch
 	return fmt.Errorf("phone_bind: 未检测到手机绑定页面")
 }
 
-// handlePhoneInput gets a phone number, enters it, receives SMS code, and verifies.
-// Iterates through configured channel IDs; if a channel fails to provide a phone number,
-// moves to the next channel.
+// handlePhoneInput gets a phone number via HeroSMS, enters it, receives SMS code, and verifies.
+// Retries up to 3 times with new numbers on failure.
 func handlePhoneInput(email string, page playwright.Page, validationURL string) error {
-	channelIDs := config.Get().SMSChannelIDs
-	if len(channelIDs) == 0 {
-		return fmt.Errorf("未配置短信频道 ID")
-	}
+	const maxAttempts = 3
 
-	attempt := 0
-	for _, chID := range channelIDs {
-		if chID == "" {
-			continue
-		}
-		attempt++
-
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if attempt > 1 {
-			L.Warn(email, fmt.Sprintf("换频道重试 (频道: %s), 重新导航到验证页...", chID))
+			L.Warn(email, fmt.Sprintf("第 %d 次重试获取手机号, 重新导航到验证页...", attempt))
 			if _, err := page.Goto(validationURL, playwright.PageGotoOptions{
 				Timeout:   playwright.Float(30000),
 				WaitUntil: playwright.WaitUntilStateDomcontentloaded,
@@ -134,37 +123,40 @@ func handlePhoneInput(email string, page playwright.Page, validationURL string) 
 			}
 		}
 
-		L.Info(email, fmt.Sprintf("获取手机号码 (频道: %s)...", chID))
-		formattedPhone, rawPhone, phoneID, err := api.GetPhoneNumber(chID)
+		L.Info(email, "获取手机号码...")
+		formattedPhone, activationID, err := api.GetPhoneNumber()
 		if err != nil {
-			L.Warn(email, fmt.Sprintf("频道 %s 获取手机号失败: %v", chID, err))
+			L.Warn(email, fmt.Sprintf("获取手机号失败: %v", err))
 			continue
 		}
-		L.Info(email, fmt.Sprintf("获取到手机号: %s (频道: %s)", formattedPhone, chID))
+		L.Info(email, fmt.Sprintf("获取到手机号: %s (activation: %s)", formattedPhone, activationID))
 
 		phoneInput := page.Locator(`input[type="tel"]`).First()
 		if err := phoneInput.Fill(formattedPhone); err != nil {
-			api.ReleasePhone(rawPhone, chID)
+			api.ReleasePhone(activationID)
 			L.Warn(email, fmt.Sprintf("填入手机号失败: %v", err))
 			continue
 		}
 
 		nextBtn := page.Locator(`button[jsname="LgbsSe"]`)
 		if err := nextBtn.Last().Click(); err != nil {
-			api.ReleasePhone(rawPhone, chID)
+			api.ReleasePhone(activationID)
 			L.Warn(email, fmt.Sprintf("点击发送短信按钮失败: %v", err))
 			continue
 		}
 		time.Sleep(5 * time.Second)
 
 		L.Info(email, "等待短信验证码...")
-		smsCode, err := api.GetSMSCode(rawPhone, phoneID, chID)
+		smsCode, err := api.GetSMSCode(activationID)
 		if err != nil {
-			L.Warn(email, fmt.Sprintf("频道 %s 获取验证码失败: %v, 释放手机号并换频道", chID, err))
-			api.ReleasePhone(rawPhone, chID)
+			L.Warn(email, fmt.Sprintf("获取验证码失败: %v, 释放手机号并重试", err))
+			api.ReleasePhone(activationID)
 			continue
 		}
 		L.Info(email, fmt.Sprintf("获取到验证码: %s", smsCode))
+
+		// Complete the activation on SMS platform
+		api.SetActivationStatus(activationID, 6)
 
 		codeInput := page.Locator(`input[type="tel"]`).First()
 		if err := codeInput.Fill(smsCode); err != nil {
@@ -180,5 +172,5 @@ func handlePhoneInput(email string, page playwright.Page, validationURL string) 
 		return nil // success
 	}
 
-	return fmt.Errorf("手机号验证失败: %d 个频道均未成功", attempt)
+	return fmt.Errorf("手机号验证失败: %d 次尝试均未成功", maxAttempts)
 }
