@@ -199,6 +199,15 @@ func doFamilyAccept(email string, bctx playwright.BrowserContext, page playwrigh
 			L.Fail(email, "加入家庭组失败: 国家不支持")
 			return errFamilyCountry
 		}
+		// Check for "already in another family group" error on page
+		alreadyInGroup := familyPage.Locator(`h2.u4nkWe`)
+		if cnt, _ := alreadyInGroup.Count(); cnt > 0 {
+			txt, _ := alreadyInGroup.First().TextContent()
+			if strings.Contains(txt, "one Family Group at a time") {
+				L.Fail(email, "加入家庭组失败: 已在其他家庭组中 (You can only be part of one Family Group at a time)")
+				return errFamilyAlreadyInGroup
+			}
+		}
 		if i == 19 {
 			return fmt.Errorf("family: 加入家庭组失败, 未跳转到成功页面, 当前: %s", familyPage.URL())
 		}

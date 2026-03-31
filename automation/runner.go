@@ -356,9 +356,15 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 			return
 		}
 
-		// Family country mismatch: mark and skip, no retry
+		// Family country mismatch: mark as failed, no retry
 		if err == errFamilyCountry {
-			updateStatus(batchID, idx, db.StatusError, "family_country", "国家不支持, 无法加入家庭组")
+			updateStatus(batchID, idx, db.StatusFailed, "family_country", "国家不支持, 无法加入家庭组")
+			return
+		}
+
+		// Already in another family group: mark as failed, no retry
+		if err == errFamilyAlreadyInGroup {
+			updateStatus(batchID, idx, db.StatusFailed, "family_already_in_group", "已在其他家庭组中, 无法加入")
 			return
 		}
 

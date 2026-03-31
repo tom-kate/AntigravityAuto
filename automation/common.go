@@ -28,6 +28,9 @@ var errQuotaDead = fmt.Errorf("quota_dead: 额度刷新时间超过5小时, 账�
 // errFamilyCountry is a sentinel error indicating the account's country doesn't match the family group.
 var errFamilyCountry = fmt.Errorf("family_country: 国家不支持, 无法加入家庭组")
 
+// errFamilyAlreadyInGroup is a sentinel error indicating the account is already in another family group.
+var errFamilyAlreadyInGroup = fmt.Errorf("family_already_in_group: 已在其他家庭组中, 无法加入")
+
 // checkRecaptcha checks if the current URL is a recaptcha challenge page.
 func checkRecaptcha(pageURL string) bool {
 	return strings.Contains(pageURL, "signin/challenge/recaptcha")
