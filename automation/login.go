@@ -54,6 +54,7 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 	time.Sleep(3 * time.Second)
 
 	// Post-login: detect challenges and handle them in a loop
+	recoveryRetries := 0
 	for round := 0; round < 10; round++ {
 		currentURL := page.URL()
 
@@ -143,6 +144,11 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 
 		// Recovery options page - skip
 		if strings.Contains(currentURL, "recoveryoptions") {
+			recoveryRetries++
+			if recoveryRetries > 2 {
+				L.Fail(email, "恢复选项页面多次跳过失败, 判定人机验证")
+				return errRecaptcha
+			}
 			L.Info(email, "跳过恢复选项页面...")
 			skipBtn := page.Locator(`button[jsname="Hx0NGb"]`)
 			if cnt, _ := skipBtn.Count(); cnt > 0 {
