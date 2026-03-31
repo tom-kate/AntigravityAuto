@@ -519,7 +519,7 @@ func RunPhoneBind(batchID string, idx int) {
 	}
 
 	L.Banner(fmt.Sprintf("手动手机绑定: %s", email))
-	updateStatus(batchID, idx, db.StatusRunning, "phone_bind", "")
+	updateStatusWithOp(batchID, idx, db.StatusRunning, "phone_bind", "", "绑定手机中")
 
 	if err := playwright.Install(&playwright.RunOptions{Browsers: []string{"chromium"}}); err != nil {
 		L.Fail(email, fmt.Sprintf("Playwright 安装失败: %v", err))
@@ -651,6 +651,6 @@ func RunPhoneBind(batchID string, idx int) {
 		return
 	}
 
-	updateStatus(batchID, idx, db.StatusSuccess, "done", "")
+	updateStatusWithOp(batchID, idx, db.StatusSuccess, "done", "", "成功")
 	L.OK(email, "手动手机绑定 + 重新授权完成")
 }
