@@ -31,6 +31,12 @@ var errFamilyCountry = fmt.Errorf("family_country: 国家不支持, 无法加入
 // errFamilyAlreadyInGroup is a sentinel error indicating the account is already in another family group.
 var errFamilyAlreadyInGroup = fmt.Errorf("family_already_in_group: 已在其他家庭组中, 无法加入")
 
+// errAgeVerification is a sentinel error indicating age verification failed (card invalid).
+var errAgeVerification = fmt.Errorf("age_verify: 年龄验证失败, 信用卡无效")
+
+// errAgeNeedVerify is a sentinel error indicating account needs age verification but card is known bad.
+var errAgeNeedVerify = fmt.Errorf("age_need_verify: 需要年龄验证, 信用卡已知不可用")
+
 // checkRecaptcha checks if the current URL is a recaptcha challenge page.
 func checkRecaptcha(pageURL string) bool {
 	return strings.Contains(pageURL, "signin/challenge/recaptcha")

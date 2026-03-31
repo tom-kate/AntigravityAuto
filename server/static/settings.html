@@ -135,6 +135,37 @@
           </div>
         </div>
 
+        <!-- Age Verification / Credit Card -->
+        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6 space-y-5">
+          <div class="flex items-center gap-2 mb-1">
+            <svg class="w-4 h-4 text-[#bc8cff]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            <span class="text-[#e6edf3] font-semibold text-[14px]">年龄验证 (信用卡)</span>
+          </div>
+          <p class="text-[11px] text-[#8b949e]">额度异常时自动使用信用卡完成 Google 年龄验证, 不会产生实际扣费</p>
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">卡号</label>
+                <input v-model="form.card_number" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="4242424242424242" inputmode="numeric">
+              </div>
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">有效期</label>
+                <input v-model="form.card_expiry" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="MM/YY" inputmode="numeric">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">安全码 (CVV)</label>
+                <input v-model="form.card_cvv" type="password" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="123" inputmode="numeric">
+              </div>
+              <div>
+                <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">账单邮编</label>
+                <input v-model="form.card_zip" class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition" placeholder="10001" inputmode="numeric">
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Save -->
         <div class="flex justify-end">
           <button @click="saveConfig" :disabled="saving" class="bg-[#238636] hover:bg-[#2ea043] disabled:opacity-40 disabled:cursor-not-allowed text-white text-[13px] font-medium px-6 py-2.5 rounded-lg transition">

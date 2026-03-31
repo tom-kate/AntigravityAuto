@@ -5,6 +5,10 @@ cpa_api_url: http://127.0.0.1:8317
 sms_username: your-api-username
 sms_password: your-api-password
 sms_channel_id: "your-channel-id"
+card_number: ""
+card_expiry: ""
+card_cvv: ""
+card_zip: ""
 headless: false
 concurrency: 1
 port: 8080

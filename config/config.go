@@ -19,6 +19,10 @@ type Config struct {
 	SMSPassword string `yaml:"sms_password"   json:"sms_password"`
 	SMSChannelID  string   `yaml:"sms_channel_id,omitempty"  json:"sms_channel_id,omitempty"`  // deprecated: use sms_channel_ids
 	SMSChannelIDs []string `yaml:"sms_channel_ids"           json:"sms_channel_ids"`
+	CardNumber string `yaml:"card_number" json:"card_number"`
+	CardExpiry string `yaml:"card_expiry" json:"card_expiry"`
+	CardCVV    string `yaml:"card_cvv"    json:"card_cvv"`
+	CardZip    string `yaml:"card_zip"    json:"card_zip"`
 	Headless     bool   `yaml:"headless"       json:"headless"`
 	Concurrency  int    `yaml:"concurrency"    json:"concurrency"`
 	Port         int    `yaml:"port"           json:"port"`
