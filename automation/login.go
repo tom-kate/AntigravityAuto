@@ -151,7 +151,12 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 				notNowBtn := page.Locator(`button[jsname="LgbsSe"]`)
 				_ = notNowBtn.Last().Click()
 			}
-			time.Sleep(3 * time.Second)
+			for j := 0; j < 15; j++ {
+				time.Sleep(2 * time.Second)
+				if page.URL() != currentURL {
+					break
+				}
+			}
 			continue
 		}
 
@@ -162,7 +167,12 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 			if cnt, _ := skipBtn.Count(); cnt > 0 {
 				_ = skipBtn.First().Click()
 			}
-			time.Sleep(3 * time.Second)
+			for j := 0; j < 15; j++ {
+				time.Sleep(2 * time.Second)
+				if page.URL() != currentURL {
+					break
+				}
+			}
 			continue
 		}
 
@@ -173,7 +183,12 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 			if cnt, _ := skipBtn.Count(); cnt > 0 {
 				_ = skipBtn.First().Click()
 			}
-			time.Sleep(3 * time.Second)
+			for j := 0; j < 15; j++ {
+				time.Sleep(2 * time.Second)
+				if page.URL() != currentURL {
+					break
+				}
+			}
 			continue
 		}
 
@@ -184,7 +199,12 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 			if cnt, _ := skipBtn.Count(); cnt > 0 {
 				_ = skipBtn.First().Click()
 			}
-			time.Sleep(3 * time.Second)
+			for j := 0; j < 15; j++ {
+				time.Sleep(2 * time.Second)
+				if page.URL() != currentURL {
+					break
+				}
+			}
 			continue
 		}
 
