@@ -145,30 +145,31 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 		// Recovery options page - skip
 		if strings.Contains(currentURL, "recoveryoptions") {
 			recoveryRetries++
-			if recoveryRetries > 2 {
+			if recoveryRetries > 5 {
 				L.Fail(email, "恢复选项页面多次跳过失败, 判定人机验证")
 				return errRecaptcha
 			}
-			L.Info(email, "跳过恢复选项页面...")
+			L.Info(email, fmt.Sprintf("跳过恢复选项页面 (%d/5)...", recoveryRetries))
+			// Reload page first if not the first attempt (page might be stuck)
+			if recoveryRetries > 1 {
+				page.Reload()
+				time.Sleep(5 * time.Second)
+			}
+			// Wait for skip button to be ready
 			skipBtn := page.Locator(`button[jsname="Hx0NGb"]`)
-			if cnt, _ := skipBtn.Count(); cnt > 0 {
+			if err := skipBtn.First().WaitFor(playwright.LocatorWaitForOptions{
+				Timeout: playwright.Float(10000),
+			}); err == nil {
 				_ = skipBtn.First().Click()
 			} else {
 				notNowBtn := page.Locator(`button[jsname="LgbsSe"]`)
 				_ = notNowBtn.Last().Click()
 			}
-			changed := false
 			for j := 0; j < 10; j++ {
 				time.Sleep(2 * time.Second)
 				if page.URL() != currentURL {
-					changed = true
 					break
 				}
-			}
-			if !changed {
-				L.Warn(email, "跳过恢复选项页面卡住, 刷新页面重试...")
-				page.Reload()
-				time.Sleep(3 * time.Second)
 			}
 			continue
 		}

@@ -111,6 +111,10 @@ func doFamilyAccept(email string, bctx playwright.BrowserContext, page playwrigh
 	}
 
 	L.Info(email, fmt.Sprintf("找到家庭组邮件 (第 %d 行), 点击打开...", foundIdx+1))
+
+	// Dismiss smart features dialog again — it may have appeared while scanning rows
+	dismissSmartFeaturesDialog(email, page)
+
 	if err := rows.Nth(foundIdx).Click(); err != nil {
 		return fmt.Errorf("family: click email row failed: %w", err)
 	}
