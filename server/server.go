@@ -458,6 +458,7 @@ func handleSMSTest(w http.ResponseWriter, r *http.Request) {
 }
 
 type exportData struct {
+	Config  config.Config      `json:"config"`
 	Masters []db.MasterAccount `json:"masters"`
 	Batches []db.Batch         `json:"batches"`
 }
@@ -470,6 +471,7 @@ func handleExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", "attachment; filename=antiauto-export.json")
 	data := exportData{
+		Config:  config.Get(),
 		Masters: db.DB.GetAllMasters(),
 		Batches: db.DB.GetAllBatches(),
 	}
@@ -491,7 +493,6 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 
 	imported := 0
 	for _, m := range data.Masters {
-		// Check if master already exists
 		if existing := db.DB.GetMaster(m.ID); existing != nil {
 			continue
 		}
@@ -508,9 +509,18 @@ func handleImport(w http.ResponseWriter, r *http.Request) {
 		batchImported++
 	}
 
+	// Restore config if present
+	configRestored := false
+	if data.Config.Port != 0 {
+		if err := config.Save(data.Config); err == nil {
+			configRestored = true
+		}
+	}
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":          "ok",
-		"masters_imported": imported,
-		"batches_imported": batchImported,
+		"status":           "ok",
+		"masters_imported":  imported,
+		"batches_imported":  batchImported,
+		"config_restored":   configRestored,
 	})
 }
