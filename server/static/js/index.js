@@ -109,6 +109,10 @@ createApp({
     async function startBatch(id){try{await axios.post('/api/batch/'+id+'/start');showToast('已启动');loadMain()}catch(e){showToast(e.response?.data?.error||'启动失败',false)}}
     async function deleteBatch(id){if(!confirm('确认删除？'))return;try{await axios.post('/api/batch/'+id+'/delete');showToast('已删除');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
     async function deleteAllSubs(){if(!confirm('确认删除所有子号？此操作不可撤销！'))return;try{const allBatchIds=[...new Set(batches.value.map(b=>b.id))];for(const bid of allBatchIds){await axios.post('/api/batch/'+bid+'/delete')}showToast('已清空所有子号');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
+
+    // Export / Import
+    async function exportData(){try{const r=await axios.get('/api/export');const blob=new Blob([JSON.stringify(r.data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='antiauto-export.json';a.click();URL.revokeObjectURL(url);showToast('导出成功')}catch(e){showToast('导出失败',false)}}
+    async function importData(e){const file=e.target.files[0];if(!file)return;e.target.value='';if(!confirm('确认导入？已存在的数据不会被覆盖。'))return;try{const text=await file.text();const data=JSON.parse(text);const r=await axios.post('/api/import',data);showToast('导入完成: '+r.data.masters_imported+' 母号, '+r.data.batches_imported+' 批次');loadMain()}catch(err){showToast('导入失败: '+(err.response?.data?.error||err.message),false)}}
     async function setSuccess(bid,idx){try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/success');showToast('已设为成功');loadMain()}catch(e){showToast(e.response?.data?.error||'操作失败',false)}}
     async function delAccount(bid,idx){if(!confirm('确认删除？'))return;try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/delete');showToast('已删除');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
 
@@ -122,6 +126,6 @@ createApp({
       cpaStatusText,cpaLabelClass,cpaErrorType,showCPADetail,barColor,barTextColor,fmtReset,
       getMasterQuotaOverview,globalQuota,quotaSubCount,
       fmtExpiry,expiryStatus,getSubsForMaster,getBatchesForMaster,getCPAFile,
-      addMaster,delMaster,showToast,startBatch,deleteBatch,deleteAllSubs,setSuccess,delAccount,bindPhone}
+      addMaster,delMaster,showToast,startBatch,deleteBatch,deleteAllSubs,exportData,importData,setSuccess,delAccount,bindPhone}
   }
 }).mount('#app');

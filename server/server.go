@@ -38,6 +38,8 @@ func Start(port int) error {
 	http.HandleFunc("/api/sms-services", handleSMSServices)
 	http.HandleFunc("/api/sms-prices", handleSMSPrices)
 	http.HandleFunc("/api/sms-test", handleSMSTest)
+	http.HandleFunc("/api/export", handleExport)
+	http.HandleFunc("/api/import", handleImport)
 	http.HandleFunc("/api/config", handleConfig)
 
 	addr := fmt.Sprintf(":%d", port)
@@ -453,4 +455,62 @@ func handleSMSTest(w http.ResponseWriter, r *http.Request) {
 	// Immediately cancel the test number
 	api.ReleasePhone(activationID)
 	json.NewEncoder(w).Encode(map[string]string{"phone": phone, "activation_id": activationID, "status": "ok (已自动释放)"})
+}
+
+type exportData struct {
+	Masters []db.MasterAccount `json:"masters"`
+	Batches []db.Batch         `json:"batches"`
+}
+
+func handleExport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", "attachment; filename=antiauto-export.json")
+	data := exportData{
+		Masters: db.DB.GetAllMasters(),
+		Batches: db.DB.GetAllBatches(),
+	}
+	json.NewEncoder(w).Encode(data)
+}
+
+func handleImport(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+	body, _ := io.ReadAll(r.Body)
+	var data exportData
+	if err := json.Unmarshal(body, &data); err != nil {
+		http.Error(w, `{"error":"JSON 解析失败"}`, 400)
+		return
+	}
+
+	imported := 0
+	for _, m := range data.Masters {
+		// Check if master already exists
+		if existing := db.DB.GetMaster(m.ID); existing != nil {
+			continue
+		}
+		db.DB.AddMasterWithID(m)
+		imported++
+	}
+
+	batchImported := 0
+	for _, b := range data.Batches {
+		if existing := db.DB.GetBatch(b.ID); existing != nil {
+			continue
+		}
+		db.DB.AddBatchWithID(b)
+		batchImported++
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":          "ok",
+		"masters_imported": imported,
+		"batches_imported": batchImported,
+	})
 }

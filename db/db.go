@@ -738,3 +738,63 @@ func (d *Database) DeleteBatch(id string) bool {
 	affected, _ := res.RowsAffected()
 	return affected > 0
 }
+
+// AddMasterWithID imports a master account with its original ID (for data migration).
+func (d *Database) AddMasterWithID(m MasterAccount) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	var expiresAt sql.NullString
+	if m.ExpiresAt != nil {
+		expiresAt = sql.NullString{String: m.ExpiresAt.Format(time.RFC3339), Valid: true}
+	}
+	var purchasedAt sql.NullString
+	if m.PurchasedAt != nil {
+		purchasedAt = sql.NullString{String: m.PurchasedAt.Format(time.RFC3339), Valid: true}
+	}
+
+	d.db.Exec(
+		`INSERT OR IGNORE INTO masters (id, email, password, aux_email, two_fa_link, remark, expires_at, purchased_at, weekly_limited)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		m.ID, m.Email, m.Password, m.AuxEmail, m.TwoFALink, m.Remark, expiresAt, purchasedAt, boolToInt(m.WeeklyLimited),
+	)
+}
+
+// AddBatchWithID imports a batch with its original ID and all sub-accounts (for data migration).
+func (d *Database) AddBatchWithID(b Batch) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	var finishedAt sql.NullString
+	if b.FinishedAt != nil {
+		finishedAt = sql.NullString{String: b.FinishedAt.Format(time.RFC3339), Valid: true}
+	}
+
+	tx, err := d.db.Begin()
+	if err != nil {
+		return
+	}
+	defer tx.Rollback()
+
+	tx.Exec(
+		`INSERT OR IGNORE INTO batches (id, master_id, flow_id, status, concurrency, created_at, finished_at)
+		 VALUES (?, ?, '', ?, ?, ?, ?)`,
+		b.ID, b.MasterID, string(b.Status), b.Concurrency, b.CreatedAt.Format(time.RFC3339), finishedAt,
+	)
+
+	for idx, acc := range b.Accounts {
+		errLogJSON, _ := json.Marshal(acc.ErrorLog)
+		var accFinished sql.NullString
+		if acc.FinishedAt != nil {
+			accFinished = sql.NullString{String: acc.FinishedAt.Format(time.RFC3339), Valid: true}
+		}
+		tx.Exec(
+			`INSERT OR IGNORE INTO sub_accounts (batch_id, idx, email, password, aux_email, two_fa, status, operation_status, retries, step, error_log, phone_bound, start_from, finished_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?)`,
+			b.ID, idx, acc.Email, acc.Password, acc.AuxEmail, acc.TwoFA,
+			string(acc.Status), acc.OperationStatus, acc.Retries, acc.Step, string(errLogJSON), boolToInt(acc.PhoneBound), accFinished,
+		)
+	}
+
+	tx.Commit()
+}
