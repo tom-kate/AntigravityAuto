@@ -170,7 +170,12 @@ func doFamilyAccept(email string, bctx playwright.BrowserContext, page playwrigh
 	time.Sleep(3 * time.Second)
 
 	// Should be on: https://myaccount.google.com/family/join/XXXX
+	// If redirected to family/details, the account is already in the family group — treat as success
 	familyURL := familyPage.URL()
+	if strings.Contains(familyURL, "myaccount.google.com/family/details") {
+		L.OK(email, "账号已在家庭组中, 跳过加入步骤")
+		return nil
+	}
 	if !strings.Contains(familyURL, "myaccount.google.com/family/join") {
 		return fmt.Errorf("family: unexpected page after invite link: %s", familyURL)
 	}
