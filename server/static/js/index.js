@@ -60,8 +60,8 @@ createApp({
     function getBatchesForMaster(mid){return batches.value.filter(b=>b.master_id===mid).slice().reverse()}
     function getCPAFile(email){const e=email.toLowerCase();return cpaFiles.value.find(f=>(f.account||'').toLowerCase()===e||(f.email||'').toLowerCase()===e)||null}
     async function loadMain(){try{const[mr,br]=await Promise.all([axios.get('/api/masters'),axios.get('/api/batches')]);masters.value=mr.data||[];batches.value=br.data||[]}catch(e){console.error(e)}}
-    async function loadCPA(){try{const cr=await axios.get('/api/cpa-files');cpaFiles.value=cr.data||[]}catch(e){console.error(e)}}
-    async function refreshSMSBalance(){try{const r=await axios.get('/api/sms-balance');smsBalance.value=r.data.balance}catch(e){console.error(e)}}
+    async function loadCPA(){try{const cr=await axios.get('/api/cpa-files');cpaFiles.value=cr.data||[]}catch(e){}}
+    async function refreshSMSBalance(){try{const r=await axios.get('/api/sms-balance');smsBalance.value=r.data.balance}catch(e){}}
 
     // Quota refresh
     async function refreshAllQuotas(){if(quotaLoading.value)return;quotaLoading.value=true;const tasks=[];for(const f of cpaFiles.value){if(f.auth_index){const e=(f.email||f.account).toLowerCase();tasks.push({email:e,authIndex:f.auth_index});}}if(!tasks.length){quotaLoading.value=false;showToast('没有可查询额度的凭证',false);return}for(const t of tasks)quotaLoadingSet[t.email]=true;let ok=0,fail=0;await Promise.all(tasks.map(async t=>{try{const r=await axios.get('/api/cpa-quota?auth_index='+encodeURIComponent(t.authIndex));if(r.data&&r.data.length){quotas[t.email]=r.data;ok++}else{fail++}}catch(e){fail++}finally{delete quotaLoadingSet[t.email]}}));quotaLoading.value=false;showToast('额度刷新: '+ok+'成功'+(fail?' / '+fail+'失败':''));}
