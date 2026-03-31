@@ -151,11 +151,18 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 				notNowBtn := page.Locator(`button[jsname="LgbsSe"]`)
 				_ = notNowBtn.Last().Click()
 			}
-			for j := 0; j < 15; j++ {
+			changed := false
+			for j := 0; j < 10; j++ {
 				time.Sleep(2 * time.Second)
 				if page.URL() != currentURL {
+					changed = true
 					break
 				}
+			}
+			if !changed {
+				L.Warn(email, "跳过恢复选项页面卡住, 刷新页面重试...")
+				page.Reload()
+				time.Sleep(3 * time.Second)
 			}
 			continue
 		}
