@@ -352,7 +352,7 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 
 		// Quota dead: mark and skip, no retry
 		if err == errQuotaDead {
-			updateStatus(batchID, idx, db.StatusError, "quota_dead", "额度刷新时间超过5小时, 账号判定死亡")
+			updateStatus(batchID, idx, db.StatusFailed, "quota_dead", "额度刷新时间超过5小时, 账号判定死亡")
 			return
 		}
 
