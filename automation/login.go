@@ -142,56 +142,34 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 			continue
 		}
 
-		// Recovery options page - skip
+		// Recovery options page — reload and retry (total ≤ 20s)
 		if strings.Contains(currentURL, "recoveryoptions") {
 			recoveryRetries++
-			if recoveryRetries > 5 {
-				L.Fail(email, "恢复选项页面多次跳过失败, 判定人机验证")
+			if recoveryRetries > 4 {
+				L.Fail(email, "恢复选项页面多次刷新失败, 判定人机验证")
 				return errRecaptcha
 			}
-			L.Info(email, fmt.Sprintf("跳过恢复选项页面 (%d/5)...", recoveryRetries))
-			// Reload page on every retry (page might be stuck)
-			if recoveryRetries > 1 {
-				page.Reload()
-				time.Sleep(3 * time.Second)
+			L.Info(email, fmt.Sprintf("恢复选项页面, 刷新重试 (%d/4)...", recoveryRetries))
+			page.Reload()
+			time.Sleep(3 * time.Second)
+			// Check if reload resolved it (redirected away from recoveryoptions)
+			if !strings.Contains(page.URL(), "recoveryoptions") {
+				continue
 			}
-			// Try multiple skip button selectors
-			clicked := false
-			skipSelectors := []string{
-				`button[jsname="Hx0NGb"]`,  // primary skip button
-				`button[jsname="LgbsSe"]`,  // "Not now" / secondary button
-				`a[jsname="Hx0NGb"]`,       // sometimes rendered as <a>
-			}
-			for _, sel := range skipSelectors {
-				btn := page.Locator(sel)
-				if cnt, _ := btn.Count(); cnt > 0 {
-					_ = btn.First().Click(playwright.LocatorClickOptions{
-						Timeout: playwright.Float(5000),
-					})
-					clicked = true
-					break
-				}
-			}
-			if !clicked {
-				// JS fallback: try clicking any visible skip/cancel button
-				_, _ = page.Evaluate(`() => {
-					const btns = document.querySelectorAll('button');
-					for (const b of btns) {
-						const t = b.textContent.toLowerCase();
-						if (t.includes('skip') || t.includes('not now') || t.includes('no thanks') || t.includes('cancel')) {
-							b.click(); return true;
-						}
+			// Still on recovery page — try clicking skip button quickly
+			_, _ = page.Evaluate(`() => {
+				const btns = document.querySelectorAll('button');
+				for (const b of btns) {
+					const t = b.textContent.toLowerCase();
+					if (t.includes('skip') || t.includes('not now') || t.includes('no thanks') || t.includes('cancel')) {
+						b.click(); return;
 					}
-					return false;
-				}`)
-			}
-			// Wait for URL to change — shorter timeout
-			for j := 0; j < 5; j++ {
-				time.Sleep(2 * time.Second)
-				if page.URL() != currentURL {
-					break
 				}
-			}
+				// fallback: known jsname
+				const s = document.querySelector('button[jsname="Hx0NGb"]') || document.querySelector('button[jsname="LgbsSe"]');
+				if (s) s.click();
+			}`)
+			time.Sleep(2 * time.Second)
 			continue
 		}
 
