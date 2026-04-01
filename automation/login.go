@@ -54,7 +54,6 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 	time.Sleep(3 * time.Second)
 
 	// Post-login: detect challenges and handle them in a loop
-	recoveryRetries := 0
 	for round := 0; round < 10; round++ {
 		currentURL := page.URL()
 
@@ -142,35 +141,10 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 			continue
 		}
 
-		// Recovery options page — reload and retry (total ≤ 20s)
+		// Recovery options page — abort and let runner retry with fresh login
 		if strings.Contains(currentURL, "recoveryoptions") {
-			recoveryRetries++
-			if recoveryRetries > 4 {
-				L.Fail(email, "恢复选项页面多次刷新失败, 判定人机验证")
-				return errRecaptcha
-			}
-			L.Info(email, fmt.Sprintf("恢复选项页面, 刷新重试 (%d/4)...", recoveryRetries))
-			page.Reload()
-			time.Sleep(3 * time.Second)
-			// Check if reload resolved it (redirected away from recoveryoptions)
-			if !strings.Contains(page.URL(), "recoveryoptions") {
-				continue
-			}
-			// Still on recovery page — try clicking skip button quickly
-			_, _ = page.Evaluate(`() => {
-				const btns = document.querySelectorAll('button');
-				for (const b of btns) {
-					const t = b.textContent.toLowerCase();
-					if (t.includes('skip') || t.includes('not now') || t.includes('no thanks') || t.includes('cancel')) {
-						b.click(); return;
-					}
-				}
-				// fallback: known jsname
-				const s = document.querySelector('button[jsname="Hx0NGb"]') || document.querySelector('button[jsname="LgbsSe"]');
-				if (s) s.click();
-			}`)
-			time.Sleep(2 * time.Second)
-			continue
+			L.Warn(email, "出现恢复选项页面, 重新登录...")
+			return fmt.Errorf("login: hit recoveryoptions page, need re-login")
 		}
 
 		// Home address page - skip
