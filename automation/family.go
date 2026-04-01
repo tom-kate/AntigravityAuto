@@ -54,6 +54,36 @@ func dismissSmartFeaturesDialog(email string, page playwright.Page) {
 	L.OK(email, "智能功能弹窗已处理")
 }
 
+// dismissAnyOverlay attempts to close any common Gmail overlay that might block clicks.
+// This handles: "Get the new Gmail" prompts, chat popups, nudge cards, etc.
+func dismissAnyOverlay(email string, page playwright.Page) {
+	// Try pressing Escape to dismiss any modal/popup
+	_ = page.Keyboard().Press("Escape")
+	time.Sleep(300 * time.Millisecond)
+
+	// Gmail "Meet" / "Chat" side-panel close buttons
+	closeSelectors := []string{
+		`div[aria-label="Close"] button`,                 // generic close button
+		`button[aria-label="Close"]`,                     // another variant
+		`div.bAw div[role="button"]`,                     // promotion tab popup
+		`button[aria-label="Got it"]`,                    // "Got it" confirmations
+		`button[aria-label="No thanks"]`,                 // "No thanks" dismissals
+		`button[aria-label="Dismiss"]`,                   // Dismiss buttons
+		`div[jsname="GqoNfe"] button[jsname="EszDL"]`,    // "Try the new Gmail" dismiss
+	}
+	for _, sel := range closeSelectors {
+		btn := page.Locator(sel)
+		if cnt, _ := btn.Count(); cnt > 0 {
+			L.Info(email, fmt.Sprintf("关闭遮挡弹窗: %s", sel))
+			_ = btn.First().Click(playwright.LocatorClickOptions{
+				Force:   playwright.Bool(true),
+				Timeout: playwright.Float(3000),
+			})
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+}
+
 // doFamilyAccept finds and accepts a Google Family Group invitation from the Gmail inbox.
 // The page should already be on the Gmail inbox (mail.google.com/mail/u/0).
 func doFamilyAccept(email string, bctx playwright.BrowserContext, page playwright.Page) error {
@@ -115,8 +145,44 @@ func doFamilyAccept(email string, bctx playwright.BrowserContext, page playwrigh
 	// Dismiss smart features dialog again — it may have appeared while scanning rows
 	dismissSmartFeaturesDialog(email, page)
 
-	if err := rows.Nth(foundIdx).Click(); err != nil {
-		return fmt.Errorf("family: click email row failed: %w", err)
+	// Dismiss any other overlay dialogs that might block the click
+	dismissAnyOverlay(email, page)
+
+	targetRow := rows.Nth(foundIdx)
+
+	// Scroll the row into view first to ensure it's visible and actionable
+	_ = targetRow.ScrollIntoViewIfNeeded(playwright.LocatorScrollIntoViewIfNeededOptions{
+		Timeout: playwright.Float(5000),
+	})
+	time.Sleep(500 * time.Millisecond)
+
+	// Try clicking the subject <span> inside the row first (more reliable than clicking the whole <tr>)
+	subjectSpan := targetRow.Locator(`span[data-thread-id]`)
+	if cnt, _ := subjectSpan.Count(); cnt == 0 {
+		// fallback: try any clickable span inside the row
+		subjectSpan = targetRow.Locator(`td.xY.a4W span`)
+	}
+
+	var clickErr error
+	if cnt, _ := subjectSpan.Count(); cnt > 0 {
+		clickErr = subjectSpan.First().Click(playwright.LocatorClickOptions{
+			Timeout: playwright.Float(15000),
+		})
+	} else {
+		// Final fallback: force-click the row via JS to bypass actionability checks
+		clickErr = targetRow.Click(playwright.LocatorClickOptions{
+			Timeout: playwright.Float(15000),
+			Force:   playwright.Bool(true),
+		})
+	}
+
+	if clickErr != nil {
+		// Last resort: use JS click to bypass any overlay
+		L.Warn(email, "常规点击失败, 尝试 JS 强制点击...")
+		_, jsErr := targetRow.Evaluate(`el => el.click()`, nil)
+		if jsErr != nil {
+			return fmt.Errorf("family: click email row failed (all methods): regular=%w, js=%v", clickErr, jsErr)
+		}
 	}
 
 	// Wait for email detail to load
