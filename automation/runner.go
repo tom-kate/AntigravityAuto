@@ -226,26 +226,8 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 				}
 			}
 			if needAgeVerify {
-				// Check if card already failed — skip verification
-				ageCardFailedMu.Lock()
-				cardBad := ageCardFailed
-				ageCardFailedMu.Unlock()
-				if cardBad {
-					L.Fail(email, "需要年龄验证, 但信用卡已知不可用, 标记年龄异常")
-					return errAgeNeedVerify
-				}
-				// Attempt age verification
-				updateStatus(batchID, idx, db.StatusRunning, "age_verify", "")
-				if verifyErr := doAgeVerify(email, page); verifyErr != nil {
-					if verifyErr == errAgeVerification {
-						ageCardFailedMu.Lock()
-						ageCardFailed = true
-						ageCardFailedMu.Unlock()
-					}
-					return verifyErr
-				}
-				// Age verified — re-check quota after verification
-				L.OK(email, "年龄验证通过, 继续流程")
+				L.Fail(email, "额度异常: 账号年龄限制, 直接标记失败")
+				return errAgeNeedVerify
 			} else {
 				L.OK(email, "额度检查通过")
 			}
@@ -381,13 +363,11 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 			return
 		}
 
-		// Age verification failed (card invalid): mark as failed, no retry
-		if err == errAgeVerification {
-			updateStatusWithOp(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 信用卡验证失败", "年龄异常")
+		// Age verification needed: mark as failed, no retry
+		if err == errAgeNeedVerify {
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 账号年龄限制", "年龄异常")
 			return
 		}
-
-		// Age verification needed but card known bad: mark as failed, no retry
 		if err == errAgeNeedVerify {
 			updateStatusWithOp(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 需要年龄验证", "年龄异常")
 			return
@@ -423,11 +403,6 @@ var (
 	globalSem     chan struct{}
 	globalSemMu   sync.Mutex
 	globalSemSize int
-
-	// ageCardFailed tracks whether the credit card has already failed age verification.
-	// Once true, all subsequent accounts with quota issues skip verification and are marked directly.
-	ageCardFailed   bool
-	ageCardFailedMu sync.Mutex
 )
 
 // getGlobalSem returns the global concurrency semaphore.
