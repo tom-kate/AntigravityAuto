@@ -156,33 +156,9 @@ func doFamilyAccept(email string, bctx playwright.BrowserContext, page playwrigh
 	})
 	time.Sleep(500 * time.Millisecond)
 
-	// Try clicking the subject <span> inside the row first (more reliable than clicking the whole <tr>)
-	subjectSpan := targetRow.Locator(`span[data-thread-id]`)
-	if cnt, _ := subjectSpan.Count(); cnt == 0 {
-		// fallback: try any clickable span inside the row
-		subjectSpan = targetRow.Locator(`td.xY.a4W span`)
-	}
-
-	var clickErr error
-	if cnt, _ := subjectSpan.Count(); cnt > 0 {
-		clickErr = subjectSpan.First().Click(playwright.LocatorClickOptions{
-			Timeout: playwright.Float(15000),
-		})
-	} else {
-		// Final fallback: force-click the row via JS to bypass actionability checks
-		clickErr = targetRow.Click(playwright.LocatorClickOptions{
-			Timeout: playwright.Float(15000),
-			Force:   playwright.Bool(true),
-		})
-	}
-
-	if clickErr != nil {
-		// Last resort: use JS click to bypass any overlay
-		L.Warn(email, "常规点击失败, 尝试 JS 强制点击...")
-		_, jsErr := targetRow.Evaluate(`el => el.click()`, nil)
-		if jsErr != nil {
-			return fmt.Errorf("family: click email row failed (all methods): regular=%w, js=%v", clickErr, jsErr)
-		}
+	// Use JS click directly — Playwright native click is unreliable on Gmail rows due to overlays
+	if _, err := targetRow.Evaluate(`el => el.click()`, nil); err != nil {
+		return fmt.Errorf("family: click email row failed: %w", err)
 	}
 
 	// Wait for email detail to load

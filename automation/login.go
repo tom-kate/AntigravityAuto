@@ -150,22 +150,43 @@ func doLogin(email string, account db.SubAccount, page playwright.Page) error {
 				return errRecaptcha
 			}
 			L.Info(email, fmt.Sprintf("跳过恢复选项页面 (%d/5)...", recoveryRetries))
-			// Reload page first if not the first attempt (page might be stuck)
+			// Reload page on every retry (page might be stuck)
 			if recoveryRetries > 1 {
 				page.Reload()
-				time.Sleep(5 * time.Second)
+				time.Sleep(3 * time.Second)
 			}
-			// Wait for skip button to be ready
-			skipBtn := page.Locator(`button[jsname="Hx0NGb"]`)
-			if err := skipBtn.First().WaitFor(playwright.LocatorWaitForOptions{
-				Timeout: playwright.Float(10000),
-			}); err == nil {
-				_ = skipBtn.First().Click()
-			} else {
-				notNowBtn := page.Locator(`button[jsname="LgbsSe"]`)
-				_ = notNowBtn.Last().Click()
+			// Try multiple skip button selectors
+			clicked := false
+			skipSelectors := []string{
+				`button[jsname="Hx0NGb"]`,  // primary skip button
+				`button[jsname="LgbsSe"]`,  // "Not now" / secondary button
+				`a[jsname="Hx0NGb"]`,       // sometimes rendered as <a>
 			}
-			for j := 0; j < 10; j++ {
+			for _, sel := range skipSelectors {
+				btn := page.Locator(sel)
+				if cnt, _ := btn.Count(); cnt > 0 {
+					_ = btn.First().Click(playwright.LocatorClickOptions{
+						Timeout: playwright.Float(5000),
+					})
+					clicked = true
+					break
+				}
+			}
+			if !clicked {
+				// JS fallback: try clicking any visible skip/cancel button
+				_, _ = page.Evaluate(`() => {
+					const btns = document.querySelectorAll('button');
+					for (const b of btns) {
+						const t = b.textContent.toLowerCase();
+						if (t.includes('skip') || t.includes('not now') || t.includes('no thanks') || t.includes('cancel')) {
+							b.click(); return true;
+						}
+					}
+					return false;
+				}`)
+			}
+			// Wait for URL to change — shorter timeout
+			for j := 0; j < 5; j++ {
 				time.Sleep(2 * time.Second)
 				if page.URL() != currentURL {
 					break
