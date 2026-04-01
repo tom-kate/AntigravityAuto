@@ -105,6 +105,9 @@ createApp({
     // Phone bind
     async function bindPhone(bid,idx){try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/bind-phone');showToast('手机绑定已启动');loadMain()}catch(e){showToast(e.response?.data?.error||'启动失败',false)}}
 
+    // Age verify
+    async function ageVerify(bid,idx){try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/age-verify');showToast('年龄验证已启动');loadMain()}catch(e){showToast(e.response?.data?.error||'启动失败',false)}}
+
     // Batch actions
     async function startBatch(id){try{await axios.post('/api/batch/'+id+'/start');showToast('已启动');loadMain()}catch(e){showToast(e.response?.data?.error||'启动失败',false)}}
     async function deleteBatch(id){if(!confirm('确认删除？'))return;try{await axios.post('/api/batch/'+id+'/delete');showToast('已删除');loadMain()}catch(e){showToast(e.response?.data?.error||'删除失败',false)}}
@@ -126,6 +129,6 @@ createApp({
       cpaStatusText,cpaLabelClass,cpaErrorType,showCPADetail,barColor,barTextColor,fmtReset,
       getMasterQuotaOverview,globalQuota,quotaSubCount,
       fmtExpiry,expiryStatus,getSubsForMaster,getBatchesForMaster,getCPAFile,
-      addMaster,delMaster,showToast,startBatch,deleteBatch,deleteAllSubs,exportData,importData,setSuccess,delAccount,bindPhone}
+      addMaster,delMaster,showToast,startBatch,deleteBatch,deleteAllSubs,exportData,importData,setSuccess,delAccount,bindPhone,ageVerify}
   }
 }).mount('#app');

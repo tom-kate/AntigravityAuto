@@ -718,7 +718,7 @@ func (d *Database) SetSubAccountSuccess(batchID string, idx int) bool {
 
 	now := time.Now().Format(time.RFC3339)
 	d.db.Exec(
-		`UPDATE sub_accounts SET status = ?, step = 'done', finished_at = ? WHERE batch_id = ? AND idx = ?`,
+		`UPDATE sub_accounts SET status = ?, step = 'done', operation_status = '成功', finished_at = ? WHERE batch_id = ? AND idx = ?`,
 		string(StatusSuccess), now, batchID, idx,
 	)
 	return true

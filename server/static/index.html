@@ -144,6 +144,7 @@
                   </div>
                   <div class="flex gap-1.5 items-center shrink-0">
                     <button v-if="getCPAFile(a.email) && cpaErrorType(getCPAFile(a.email))==='phone'" @click="bindPhone(b.id,i)" class="text-[10px] text-[#d29922] hover:text-[#e3b341] bg-[#d2992215] hover:bg-[#d2992225] px-2 py-1 rounded-md transition font-medium">绑定手机</button>
+                    <button v-if="a.operation_status==='年龄异常'" @click="ageVerify(b.id,i)" class="text-[10px] text-[#d29922] hover:text-[#e3b341] bg-[#d2992215] hover:bg-[#d2992225] px-2 py-1 rounded-md transition font-medium">年龄验证</button>
                     <button v-if="a.status!=='success'" @click="setSuccess(b.id,i)" class="text-[10px] text-[#3fb950] hover:text-[#56d364] bg-[#3fb95015] hover:bg-[#3fb95025] px-2 py-1 rounded-md transition">设成功</button>
                     <button @click="delAccount(b.id,i)" class="text-[10px] text-[#484f58] hover:text-[#f85149] bg-[#21262d] hover:bg-[#f8514915] px-2 py-1 rounded-md transition">删除</button>
                   </div>

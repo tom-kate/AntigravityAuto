@@ -226,8 +226,16 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 				}
 			}
 			if needAgeVerify {
-				L.Fail(email, "额度异常: 账号年龄限制, 直接标记失败")
-				return errAgeNeedVerify
+				// Attempt age verification with credit card
+				updateStatus(batchID, idx, db.StatusRunning, "age_verify", "")
+				if verifyErr := doAgeVerify(email, page); verifyErr != nil {
+					return verifyErr
+				}
+				// Age verified — re-do OAuth to get fresh credentials
+				L.OK(email, "年龄验证通过, 重新 OAuth 授权...")
+				if err := doOAuthWithRetry("年龄验证后 OAuth"); err != nil {
+					return err
+				}
 			} else {
 				L.OK(email, "额度检查通过")
 			}
@@ -363,13 +371,9 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 			return
 		}
 
-		// Age verification needed: mark as failed, no retry
-		if err == errAgeNeedVerify {
-			updateStatusWithOp(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 账号年龄限制", "年龄异常")
-			return
-		}
-		if err == errAgeNeedVerify {
-			updateStatusWithOp(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 需要年龄验证", "年龄异常")
+		// Age verification failed (card invalid or unknown page): mark as failed, no retry
+		if err == errAgeVerification {
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "age_verify", "年龄异常: 信用卡验证失败", "年龄异常")
 			return
 		}
 
@@ -628,4 +632,129 @@ func RunPhoneBind(batchID string, idx int) {
 
 	updateStatusWithOp(batchID, idx, db.StatusSuccess, "done", "", "成功")
 	L.OK(email, "手动手机绑定 + 重新授权完成")
+}
+
+// RunAgeVerify runs a standalone age verification for a single sub account.
+// It logs in, performs credit card age verification, then re-does OAuth.
+func RunAgeVerify(batchID string, idx int) {
+	batch := db.DB.GetBatch(batchID)
+	if batch == nil || idx >= len(batch.Accounts) {
+		return
+	}
+
+	account := batch.Accounts[idx]
+	email := account.Email
+
+	// Prevent duplicate runs
+	if account.Status == db.StatusRunning {
+		L.Warn(email, "该账号正在执行中, 请勿重复操作")
+		return
+	}
+
+	L.Banner(fmt.Sprintf("手动年龄验证: %s", email))
+	updateStatusWithOp(batchID, idx, db.StatusRunning, "age_verify", "", "年龄验证中")
+
+	if err := playwright.Install(&playwright.RunOptions{Browsers: []string{"chromium"}}); err != nil {
+		L.Fail(email, fmt.Sprintf("Playwright 安装失败: %v", err))
+		updateStatusWithOp(batchID, idx, db.StatusError, "age_verify", fmt.Sprintf("Playwright 安装失败: %v", err), "年龄异常")
+		return
+	}
+
+	pw, err := playwright.Run()
+	if err != nil {
+		L.Fail(email, fmt.Sprintf("Playwright 启动失败: %v", err))
+		updateStatusWithOp(batchID, idx, db.StatusError, "age_verify", fmt.Sprintf("Playwright 启动失败: %v", err), "年龄异常")
+		return
+	}
+	defer pw.Stop()
+
+	launchOpts := playwright.BrowserTypeLaunchOptions{
+		Headless: playwright.Bool(false),
+		Args: []string{
+			"--disable-blink-features=AutomationControlled",
+			"--no-sandbox",
+			"--disable-dev-shm-usage",
+			"--disable-infobars",
+			"--disable-extensions",
+		},
+	}
+	if config.Get().Headless {
+		launchOpts.Args = append(launchOpts.Args, "--headless=new")
+	}
+	if cfg := config.Get(); cfg.ProxyEnabled && cfg.Proxy != "" {
+		launchOpts.Proxy = &playwright.Proxy{Server: cfg.Proxy}
+	}
+
+	browser, err := pw.Chromium.Launch(launchOpts)
+	if err != nil {
+		L.Fail(email, fmt.Sprintf("浏览器启动失败: %v", err))
+		updateStatusWithOp(batchID, idx, db.StatusError, "age_verify", fmt.Sprintf("浏览器启动失败: %v", err), "年龄异常")
+		return
+	}
+	defer browser.Close()
+
+	bctx, err := browser.NewContext(playwright.BrowserNewContextOptions{
+		UserAgent: playwright.String("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+	})
+	if err != nil {
+		updateStatusWithOp(batchID, idx, db.StatusError, "age_verify", "创建浏览器上下文失败", "年龄异常")
+		return
+	}
+	defer bctx.Close()
+
+	page, err := bctx.NewPage()
+	if err != nil {
+		updateStatusWithOp(batchID, idx, db.StatusError, "age_verify", "创建页面失败", "年龄异常")
+		return
+	}
+
+	// Step 1: Login
+	L.Step(email, "登录中...")
+	if err := doLogin(email, account, page); err != nil {
+		L.Fail(email, fmt.Sprintf("登录失败: %v", err))
+		updateStatusWithOp(batchID, idx, db.StatusError, "age_verify", fmt.Sprintf("登录失败: %v", err), "年龄异常")
+		return
+	}
+
+	// Step 2: Age verification
+	L.Step(email, "开始年龄验证...")
+	if err := doAgeVerify(email, page); err != nil {
+		L.Fail(email, fmt.Sprintf("年龄验证失败: %v", err))
+		updateStatusWithOp(batchID, idx, db.StatusFailed, "age_verify", fmt.Sprintf("年龄验证失败: %v", err), "年龄异常")
+		return
+	}
+
+	// Step 3: Delete CPA file and re-OAuth
+	L.Info(email, "年龄验证通过, 删除 CPA 凭证并重新授权...")
+	api.DeleteAuthFile(email)
+	time.Sleep(3 * time.Second)
+
+	// Re-OAuth with callback handling
+	oauthCallbackCh := make(chan error, 1)
+	bctx.OnRequest(func(req playwright.Request) {
+		reqURL := req.URL()
+		if strings.HasPrefix(reqURL, "http://localhost:51121/oauth-callback") {
+			parsed, _ := url.Parse(reqURL)
+			code := parsed.Query().Get("code")
+			if code == "" {
+				select { case oauthCallbackCh <- fmt.Errorf("no code"): default: }
+				return
+			}
+			if _, cbErr := api.CompleteOAuthFlow(code); cbErr != nil {
+				select { case oauthCallbackCh <- cbErr: default: }
+			} else {
+				select { case oauthCallbackCh <- nil: default: }
+			}
+		}
+	})
+
+	L.Step(email, "重新 OAuth 授权...")
+	if err := doOAuthStart(email, account, bctx, oauthCallbackCh); err != nil {
+		L.Fail(email, fmt.Sprintf("重新 OAuth 失败: %v", err))
+		updateStatusWithOp(batchID, idx, db.StatusError, "oauth", fmt.Sprintf("重新 OAuth 失败: %v", err), "年龄异常")
+		return
+	}
+
+	updateStatusWithOp(batchID, idx, db.StatusSuccess, "done", "", "成功")
+	L.OK(email, "手动年龄验证 + 重新授权完成")
 }
