@@ -52,11 +52,6 @@ func doAgeVerify(email string, page playwright.Page) error {
 		return err
 	}
 
-	// 切换国家为美国
-	if err := switchCountryToUS(email, fl); err != nil {
-		return err
-	}
-
 	// 填写信用卡表单
 	if err := fillCardForm(email, fl, cfg); err != nil {
 		return err
@@ -85,51 +80,6 @@ func waitForIframeReady(email string, fl playwright.FrameLocator) error {
 		}
 	}
 	return fmt.Errorf("age_verify: 支付 iframe 60秒内未加载完成")
-}
-
-// switchCountryToUS 检查国家下拉框，非美国则用 DispatchEvent 切换。
-func switchCountryToUS(email string, fl playwright.FrameLocator) error {
-	countrySpan := fl.Locator(`span[jsname="Fb0Bif"]`).First()
-	countryText, _ := countrySpan.TextContent(playwright.LocatorTextContentOptions{
-		Timeout: playwright.Float(3000),
-	})
-	country := strings.TrimSpace(countryText)
-	if country == "" || country == "United States" {
-		return nil
-	}
-
-	L.Info(email, fmt.Sprintf("当前国家: %s, 切换到 United States...", country))
-
-	// 点击 combobox 打开下拉列表
-	combobox := fl.Locator(`[role="combobox"]`).First()
-	if err := combobox.Click(playwright.LocatorClickOptions{
-		Timeout: playwright.Float(5000),
-	}); err != nil {
-		return fmt.Errorf("age_verify: 点击国家下拉框失败: %w", err)
-	}
-	time.Sleep(1 * time.Second)
-
-	// 用 DispatchEvent 点击 United States（不需要可见）
-	usOption := fl.Locator(`li[data-value="308"]`)
-	if err := usOption.DispatchEvent("click", nil, playwright.LocatorDispatchEventOptions{
-		Timeout: playwright.Float(5000),
-	}); err != nil {
-		return fmt.Errorf("age_verify: 点击 United States 选项失败: %w", err)
-	}
-
-	L.Info(email, "已选择 United States, 等待 iframe 刷新...")
-	time.Sleep(5 * time.Second)
-
-	// 等待 iframe 刷新后表单重新出现
-	cardInput := fl.Locator(`input[inputmode="numeric"]`).First()
-	for i := 0; i < 15; i++ {
-		time.Sleep(2 * time.Second)
-		if cnt, _ := cardInput.Count(); cnt > 0 {
-			L.Info(email, "国家切换完成, iframe 已刷新")
-			return nil
-		}
-	}
-	return fmt.Errorf("age_verify: 切换国家后 iframe 未恢复")
 }
 
 // fillCardForm 填写卡号、有效期、安全码、邮编（美国表单）。
