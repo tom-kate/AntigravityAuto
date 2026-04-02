@@ -112,27 +112,12 @@ func switchCountryToUS(email string, agePage playwright.Page, fl playwright.Fram
 	time.Sleep(1 * time.Second)
 
 	// 点击 United States 选项 (data-value="308")
-	// 列表很长，需要先滚动到可见区域
+	// 使用 DispatchEvent 触发点击，不需要元素在视口内可见
 	usOption := fl.Locator(`li[data-value="308"]`)
-	if err := usOption.ScrollIntoViewIfNeeded(playwright.LocatorScrollIntoViewIfNeededOptions{
+	if err := usOption.DispatchEvent("click", nil, playwright.LocatorDispatchEventOptions{
 		Timeout: playwright.Float(5000),
 	}); err != nil {
-		L.Warn(email, fmt.Sprintf("滚动到 United States 失败: %v, 尝试键盘选择", err))
-		// 备用方案：键盘输入 u 跳到 U 开头的国家，然后按方向键
-		_ = agePage.Keyboard().Press("u")
-		time.Sleep(300 * time.Millisecond)
-		for i := 0; i < 6; i++ {
-			_ = agePage.Keyboard().Press("ArrowDown")
-			time.Sleep(200 * time.Millisecond)
-		}
-		_ = agePage.Keyboard().Press("Enter")
-	} else {
-		time.Sleep(300 * time.Millisecond)
-		if err := usOption.Click(playwright.LocatorClickOptions{
-			Timeout: playwright.Float(5000),
-		}); err != nil {
-			return fmt.Errorf("age_verify: 点击 United States 选项失败: %w", err)
-		}
+		return fmt.Errorf("age_verify: 点击 United States 选项失败: %w", err)
 	}
 
 	L.Info(email, "已选择 United States, 等待 iframe 刷新...")
