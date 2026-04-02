@@ -112,7 +112,7 @@ func fillCardForm(email string, fl playwright.FrameLocator, cfg config.Config) e
 	if err := fl.Locator(`input[autocomplete="postal-code"]`).First().Fill(zip); err != nil {
 		return fmt.Errorf("age_verify: 填写邮编失败: %w", err)
 	}
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 
 	return nil
 }
