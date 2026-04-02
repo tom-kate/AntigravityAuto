@@ -386,21 +386,22 @@ func selectUSCountryIfNeeded(email string, agePage playwright.Page, cardFrame pl
 	L.Info(email, "国家非美国, 切换到 United States...")
 
 	// Click country dropdown to open
-	_, _ = cardFrame.Evaluate(`() => {
+	clickResult, _ := cardFrame.Evaluate(`() => {
 		const cbs = document.querySelectorAll('[role="combobox"]');
 		for (const cb of cbs) {
 			const label = cb.querySelector('.VfPpkd-uusGie-fmcmS');
 			if (label && label.textContent.trim() !== '') {
 				cb.click();
-				return true;
+				return 'clicked: ' + label.textContent.trim();
 			}
 		}
-		return false;
+		return 'no combobox found';
 	}`)
+	L.Info(email, fmt.Sprintf("国家下拉框: %v", clickResult))
 	time.Sleep(1 * time.Second)
 
 	// Select "United States"
-	_, _ = cardFrame.Evaluate(`() => {
+	selectResult, _ := cardFrame.Evaluate(`() => {
 		const opts = document.querySelectorAll('[role="option"]');
 		for (const opt of opts) {
 			if (opt.textContent.trim() === 'United States') {
@@ -410,12 +411,25 @@ func selectUSCountryIfNeeded(email string, agePage playwright.Page, cardFrame pl
 		}
 		return false;
 	}`)
+	L.Info(email, fmt.Sprintf("选择 United States: %v", selectResult))
 	time.Sleep(5 * time.Second) // wait for refresh
 
-	// Re-find iframe after refresh
+	// Re-find iframe after refresh. Page may have navigated away from credit-card.
 	var newFrame playwright.Frame
 	for attempt := 0; attempt < 20; attempt++ {
 		time.Sleep(2 * time.Second)
+
+		// If page navigated back to age-verification (without /credit-card), re-click the link
+		currentURL := agePage.URL()
+		if strings.Contains(currentURL, "age-verification") && !strings.Contains(currentURL, "credit-card") {
+			L.Info(email, "页面刷新回年龄验证首页, 重新点击信用卡选项...")
+			creditCardLink := agePage.Locator(`a[href="age-verification/credit-card"]`)
+			if cnt, _ := creditCardLink.Count(); cnt > 0 {
+				_ = creditCardLink.Click()
+				time.Sleep(3 * time.Second)
+			}
+		}
+
 		for _, frame := range agePage.Frames() {
 			if strings.Contains(frame.URL(), "payments.google.com") {
 				newFrame = frame
