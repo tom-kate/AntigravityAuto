@@ -58,15 +58,13 @@ func doAgeVerify(email string, page playwright.Page) error {
 		return err
 	}
 
-	// 依次尝试 4/5/6 位随机邮编提交
+	// 依次尝试 4/5/6 位随机邮编提交（邮编字段可能不存在，忽略错误）
 	zipLengths := []int{4, 5, 6}
 	zipInput := fl.Locator(`input[autocomplete="postal-code"]`).First()
 	for _, digits := range zipLengths {
 		zip := randomZip(digits)
 		L.Info(email, fmt.Sprintf("尝试 %d 位邮编: %s", digits, zip))
-		if err := zipInput.Fill(zip); err != nil {
-			return fmt.Errorf("age_verify: 填写邮编失败: %w", err)
-		}
+		_ = zipInput.Fill(zip, playwright.LocatorFillOptions{Timeout: playwright.Float(2000)})
 		time.Sleep(500 * time.Millisecond)
 
 		if err := clickSubmit(email, fl); err != nil {
@@ -125,16 +123,12 @@ func fillCardForm(email string, fl playwright.FrameLocator, cfg config.Config) e
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	// 详细地址
-	if err := fl.Locator(`input[type="search"]`).First().Fill("123 Main St"); err != nil {
-		return fmt.Errorf("age_verify: 填写地址失败: %w", err)
-	}
+	// 详细地址（可能不存在，忽略错误）
+	_ = fl.Locator(`input[type="search"]`).First().Fill("123 Main St", playwright.LocatorFillOptions{Timeout: playwright.Float(2000)})
 	time.Sleep(500 * time.Millisecond)
 
-	// 城市
-	if err := fl.Locator(`input[type="text"]`).Last().Fill("Portland"); err != nil {
-		return fmt.Errorf("age_verify: 填写城市失败: %w", err)
-	}
+	// 城市（可能不存在，忽略错误）
+	_ = fl.Locator(`input[type="text"]`).Last().Fill("Portland", playwright.LocatorFillOptions{Timeout: playwright.Float(2000)})
 	time.Sleep(500 * time.Millisecond)
 
 	return nil
