@@ -123,7 +123,7 @@ func GetPhoneNumber() (formatted string, activationID string, err error) {
 
 // GetSMSCode polls for the SMS verification code for the given activation.
 func GetSMSCode(activationID string) (string, error) {
-	for i := 0; i < 40; i++ {
+	for i := 0; i < 20; i++ {
 		result, err := smsRequest("getStatus", map[string]string{
 			"id": activationID,
 		})
@@ -146,7 +146,7 @@ func GetSMSCode(activationID string) (string, error) {
 		time.Sleep(3 * time.Second)
 	}
 
-	return "", fmt.Errorf("获取短信验证码失败: 120秒轮询后未收到")
+	return "", fmt.Errorf("获取短信验证码失败: 60秒轮询后未收到")
 }
 
 // ─── Set Status (complete / cancel) ────────────────────────────
