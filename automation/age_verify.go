@@ -2,6 +2,7 @@ package automation
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 const iframeSelector = `iframe[title="Complete your purchase"]`
 
 // doAgeVerify 通过信用卡完成 Google 年龄验证。
+// 直接打开 credit-card 页面，不选国家，直接填表提交。
 func doAgeVerify(email string, page playwright.Page) error {
 	cfg := config.Get()
 	if cfg.CardNumber == "" || cfg.CardExpiry == "" || cfg.CardCVV == "" {
@@ -43,7 +45,6 @@ func doAgeVerify(email string, page playwright.Page) error {
 	}
 	time.Sleep(3 * time.Second)
 
-	// 通过 FrameLocator 操作 iframe（跨域 iframe 的 Frame.URL() 为 about:blank）
 	fl := agePage.FrameLocator(iframeSelector)
 
 	// 等待 iframe 内表单加载
@@ -52,23 +53,38 @@ func doAgeVerify(email string, page playwright.Page) error {
 		return err
 	}
 
-	// 切换国家为美国
-	if err := switchCountryToUS(email, agePage, fl); err != nil {
-		return err
-	}
-
-	// 填写信用卡表单
+	// 填写信用卡表单（不含邮编）
 	if err := fillCardForm(email, fl, cfg); err != nil {
 		return err
 	}
 
-	// 点击提交
-	if err := clickSubmit(email, fl); err != nil {
-		return err
+	// 依次尝试 4/5/6 位随机邮编提交
+	zipLengths := []int{4, 5, 6}
+	zipInput := fl.Locator(`input[autocomplete="postal-code"]`).First()
+	for _, digits := range zipLengths {
+		zip := randomZip(digits)
+		L.Info(email, fmt.Sprintf("尝试 %d 位邮编: %s", digits, zip))
+		if err := zipInput.Fill(zip); err != nil {
+			return fmt.Errorf("age_verify: 填写邮编失败: %w", err)
+		}
+		time.Sleep(500 * time.Millisecond)
+
+		if err := clickSubmit(email, fl); err != nil {
+			return err
+		}
+
+		// 等待 15 秒看是否成功
+		ok, err := checkResult(email, agePage, fl, 15)
+		if ok {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		L.Warn(email, fmt.Sprintf("%d 位邮编未通过, 换下一个", digits))
 	}
 
-	// 等待验证结果
-	return waitForResult(email, agePage, fl)
+	return fmt.Errorf("age_verify: 所有邮编尝试均未成功, 当前页面: %s", agePage.URL())
 }
 
 // waitForIframeReady 等待 iframe 内表单元素可用。
@@ -76,8 +92,7 @@ func waitForIframeReady(email string, fl playwright.FrameLocator) error {
 	cardInput := fl.Locator(`input[inputmode="numeric"]`).First()
 	for i := 0; i < 30; i++ {
 		time.Sleep(2 * time.Second)
-		cnt, _ := cardInput.Count()
-		if cnt > 0 {
+		if cnt, _ := cardInput.Count(); cnt > 0 {
 			L.Info(email, "支付 iframe 表单已加载")
 			return nil
 		}
@@ -88,87 +103,37 @@ func waitForIframeReady(email string, fl playwright.FrameLocator) error {
 	return fmt.Errorf("age_verify: 支付 iframe 60秒内未加载完成")
 }
 
-// switchCountryToUS 检查国家下拉框，非美国则切换。
-func switchCountryToUS(email string, agePage playwright.Page, fl playwright.FrameLocator) error {
-	// 读取当前国家文字
-	countrySpan := fl.Locator(`span[jsname="Fb0Bif"]`).First()
-	countryText, _ := countrySpan.TextContent(playwright.LocatorTextContentOptions{
-		Timeout: playwright.Float(3000),
-	})
-	country := strings.TrimSpace(countryText)
-	if country == "" || country == "United States" {
-		return nil
-	}
-
-	L.Info(email, fmt.Sprintf("当前国家: %s, 切换到 United States...", country))
-
-	// 点击 combobox 打开下拉列表
-	combobox := fl.Locator(`[role="combobox"]`).First()
-	if err := combobox.Click(playwright.LocatorClickOptions{
-		Timeout: playwright.Float(5000),
-	}); err != nil {
-		return fmt.Errorf("age_verify: 点击国家下拉框失败: %w", err)
-	}
-	time.Sleep(1 * time.Second)
-
-	// 点击 United States 选项 (data-value="308")
-	// 使用 DispatchEvent 触发点击，不需要元素在视口内可见
-	usOption := fl.Locator(`li[data-value="308"]`)
-	if err := usOption.DispatchEvent("click", nil, playwright.LocatorDispatchEventOptions{
-		Timeout: playwright.Float(5000),
-	}); err != nil {
-		return fmt.Errorf("age_verify: 点击 United States 选项失败: %w", err)
-	}
-
-	L.Info(email, "已选择 United States, 等待 iframe 刷新...")
-	time.Sleep(5 * time.Second)
-
-	// 等待 iframe 刷新后表单重新出现
-	cardInput := fl.Locator(`input[inputmode="numeric"]`).First()
-	for i := 0; i < 15; i++ {
-		time.Sleep(2 * time.Second)
-		cnt, _ := cardInput.Count()
-		if cnt > 0 {
-			L.Info(email, "国家切换完成, iframe 已刷新")
-			return nil
-		}
-	}
-	return fmt.Errorf("age_verify: 切换国家后 iframe 未恢复")
-}
-
-// fillCardForm 填写信用卡号、有效期、安全码、邮编。
+// fillCardForm 填写卡号、有效期、安全码、地址、城市（不含邮编）。
 func fillCardForm(email string, fl playwright.FrameLocator, cfg config.Config) error {
 	L.Info(email, "填写信用卡信息...")
 
-	// 卡号
-	cardInput := fl.Locator(`input[inputmode="numeric"]`).First()
-	if err := cardInput.Fill(cfg.CardNumber); err != nil {
+	// 卡号 — 第一个 numeric input
+	if err := fl.Locator(`input[inputmode="numeric"]`).First().Fill(cfg.CardNumber); err != nil {
 		return fmt.Errorf("age_verify: 填写卡号失败: %w", err)
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	// 有效期
-	expiryInput := fl.Locator(`input[aria-label*="Expiration"]`).First()
-	if err := expiryInput.Fill(cfg.CardExpiry); err != nil {
+	// 有效期 — aria-label 包含 "Expiration"
+	if err := fl.Locator(`input[aria-label*="Expiration"]`).First().Fill(cfg.CardExpiry); err != nil {
 		return fmt.Errorf("age_verify: 填写有效期失败: %w", err)
 	}
 	time.Sleep(500 * time.Millisecond)
 
 	// 安全码 — 第三个 numeric input
-	cvvInput := fl.Locator(`input[inputmode="numeric"]`).Nth(2)
-	if err := cvvInput.Fill(cfg.CardCVV); err != nil {
+	if err := fl.Locator(`input[inputmode="numeric"]`).Nth(2).Fill(cfg.CardCVV); err != nil {
 		return fmt.Errorf("age_verify: 填写安全码失败: %w", err)
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	// 邮编
-	zip := cfg.CardZip
-	if zip == "" {
-		zip = "97201"
+	// 详细地址
+	if err := fl.Locator(`input[type="search"]`).First().Fill("123 Main St"); err != nil {
+		return fmt.Errorf("age_verify: 填写地址失败: %w", err)
 	}
-	zipInput := fl.Locator(`input[autocomplete="postal-code"]`).First()
-	if err := zipInput.Fill(zip); err != nil {
-		return fmt.Errorf("age_verify: 填写邮编失败: %w", err)
+	time.Sleep(500 * time.Millisecond)
+
+	// 城市
+	if err := fl.Locator(`input[type="text"]`).Last().Fill("Portland"); err != nil {
+		return fmt.Errorf("age_verify: 填写城市失败: %w", err)
 	}
 	time.Sleep(500 * time.Millisecond)
 
@@ -189,34 +154,48 @@ func clickSubmit(email string, fl playwright.FrameLocator) error {
 	return nil
 }
 
-// waitForResult 等待年龄验证结果。
-func waitForResult(email string, agePage playwright.Page, fl playwright.FrameLocator) error {
-	L.Info(email, "等待验证结果...")
-	for i := 0; i < 30; i++ {
+// randomZip 生成指定位数的随机数字邮编。
+func randomZip(digits int) string {
+	s := ""
+	for i := 0; i < digits; i++ {
+		if i == 0 {
+			s += fmt.Sprintf("%d", rand.Intn(9)+1) // 首位不为0
+		} else {
+			s += fmt.Sprintf("%d", rand.Intn(10))
+		}
+	}
+	return s
+}
+
+// checkResult 在 waitSec 秒内检查是否验证成功。
+// 返回 (true, nil) 表示成功，(false, nil) 表示超时未成功，(false, err) 表示明确失败。
+func checkResult(email string, agePage playwright.Page, fl playwright.FrameLocator, waitSec int) (bool, error) {
+	rounds := waitSec / 2
+	if rounds < 1 {
+		rounds = 1
+	}
+	for i := 0; i < rounds; i++ {
 		time.Sleep(2 * time.Second)
 
-		// 检查 URL 是否跳转到 result 页面
 		if strings.Contains(agePage.URL(), "age-verification/result") {
 			L.OK(email, "年龄验证成功")
-			return nil
+			return true, nil
 		}
 
-		// 检查页面上是否出现成功文字
 		bodyText, _ := agePage.Locator("body").TextContent()
 		if strings.Contains(bodyText, "Your age is verified") {
 			L.OK(email, "年龄验证成功")
-			return nil
+			return true, nil
 		}
 
-		// 检查 iframe 内是否有错误提示
 		alertDiv := fl.Locator(`div[role="alert"]`).First()
 		if cnt, _ := alertDiv.Count(); cnt > 0 {
 			txt, _ := alertDiv.TextContent()
-			if txt != "" {
+			if txt != "" && strings.Contains(txt, "card") {
 				L.Fail(email, fmt.Sprintf("年龄验证失败: %s", txt))
-				return errAgeVerification
+				return false, errAgeVerification
 			}
 		}
 	}
-	return fmt.Errorf("age_verify: 60秒超时未获得验证结果, 当前页面: %s", agePage.URL())
+	return false, nil
 }
