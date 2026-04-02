@@ -120,10 +120,11 @@ func fillCardForm(email string, fl playwright.FrameLocator, cfg config.Config) e
 // clickSubmit 点击 "Save and submit" 按钮。
 func clickSubmit(email string, fl playwright.FrameLocator) error {
 	L.Info(email, "点击 Save and submit...")
-	btn := fl.Locator(`button[jsname="LgbsSe"]`).Filter(playwright.LocatorFilterOptions{
+	// 用 class 匹配主操作按钮（蓝色填充按钮）
+	btn := fl.Locator(`button.VfPpkd-LgbsSe-OWXEXe-k8QpJ`).Filter(playwright.LocatorFilterOptions{
 		HasText: "Save and submit",
 	})
-	if err := btn.Click(playwright.LocatorClickOptions{
+	if err := btn.DispatchEvent("click", nil, playwright.LocatorDispatchEventOptions{
 		Timeout: playwright.Float(10000),
 	}); err != nil {
 		return fmt.Errorf("age_verify: 点击提交按钮失败: %w", err)
