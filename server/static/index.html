@@ -248,7 +248,7 @@
   <!-- Sub Modal: Create Batch / Import -->
   <div v-if="subModal.show" class="fixed inset-0 z-50 flex items-center justify-center" @click.self="subModal.show=false">
     <div class="absolute inset-0 bg-black/50"></div>
-    <div class="relative bg-[#161b22] rounded-xl border border-[#30363d] w-[520px] shadow-2xl">
+    <div class="relative bg-[#161b22] rounded-xl border border-[#30363d] w-[680px] shadow-2xl">
       <div class="px-5 py-4 border-b border-[#21262d] flex items-center justify-between">
         <h3 class="text-[#e6edf3] font-semibold text-[15px]">{{subModal.type==='batch'?'创建自动化批次':'导入已配置子号'}}</h3>
         <button @click="subModal.show=false" class="text-[#484f58] hover:text-[#c9d1d9] text-xl leading-none transition">&times;</button>
@@ -256,14 +256,14 @@
       <div class="px-5 py-4 space-y-3">
         <div v-if="subModal.type==='batch'">
           <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">子号列表</label>
-          <textarea v-model="subModal.text" rows="5"
+          <textarea v-model="subModal.text" rows="8"
             class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition resize-y"
             placeholder="邮箱---密码---辅助邮箱---2FA密钥（每行一个）"></textarea>
           <p class="text-[10px] text-[#484f58] mt-1">用 --- (三个横线) 分隔各字段</p>
         </div>
         <div v-else>
           <label class="block text-[11px] text-[#8b949e] mb-1.5 uppercase tracking-wider font-medium">子号列表</label>
-          <textarea v-model="subModal.text" rows="5"
+          <textarea v-model="subModal.text" rows="8"
             class="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-[13px] text-[#c9d1d9] font-mono placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff30] transition resize-y"
             placeholder="邮箱---密码---辅助邮箱---2FA密钥（每行一个）"></textarea>
           <p class="text-[10px] text-[#484f58] mt-1">格式同批次，用 --- 分隔。导入的子号直接标记为「成功」，不执行自动化</p>
@@ -272,8 +272,45 @@
       <div class="px-5 py-3 border-t border-[#21262d] flex justify-end gap-2">
         <button @click="subModal.show=false" class="bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-[12px] px-4 py-2 rounded-lg transition">取消</button>
         <button @click="submitSubModal" class="bg-[#238636] hover:bg-[#2ea043] text-white text-[12px] font-medium px-5 py-2 rounded-lg transition">
-          {{subModal.type==='batch'?'创建并启动':'导入'}}
+          {{subModal.type==='batch'?'下一步':'导入'}}
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Confirm Modal -->
+  <div v-if="showConfirm" class="fixed inset-0 z-[60] flex items-center justify-center" @click.self="cancelConfirm">
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="relative bg-[#161b22] rounded-xl border border-[#30363d] w-[680px] max-h-[80vh] flex flex-col shadow-2xl">
+      <div class="px-5 py-4 border-b border-[#21262d] flex items-center justify-between">
+        <h3 class="text-[#e6edf3] font-semibold text-[15px]">确认子号列表 <span class="text-[#8b949e] font-normal text-[13px] ml-2">共 {{confirmAccs.length}} 个</span></h3>
+        <button @click="cancelConfirm" class="text-[#484f58] hover:text-[#c9d1d9] text-xl leading-none transition">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto px-5 py-3">
+        <table class="w-full text-[12px]">
+          <thead>
+            <tr class="text-[#8b949e] text-left border-b border-[#21262d]">
+              <th class="py-2 pr-2 w-8">#</th>
+              <th class="py-2 pr-2">邮箱</th>
+              <th class="py-2 pr-2">密码</th>
+              <th class="py-2 pr-2">辅助邮箱</th>
+              <th class="py-2">2FA</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(a,i) in confirmAccs" :key="i" class="border-b border-[#21262d]/50 hover:bg-[#21262d30]">
+              <td class="py-1.5 pr-2 text-[#484f58]">{{i+1}}</td>
+              <td class="py-1.5 pr-2 text-[#c9d1d9] font-mono">{{a.email}}</td>
+              <td class="py-1.5 pr-2 text-[#8b949e] font-mono">{{a.password.length>8?a.password.slice(0,4)+'••••':a.password}}</td>
+              <td class="py-1.5 pr-2 text-[#8b949e] font-mono">{{a.aux_email||'-'}}</td>
+              <td class="py-1.5 text-[#8b949e]">{{a.two_fa?'✓':'-'}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="px-5 py-3 border-t border-[#21262d] flex justify-end gap-2">
+        <button @click="cancelConfirm" class="bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-[12px] px-4 py-2 rounded-lg transition">返回修改</button>
+        <button @click="confirmCreateBatch" class="bg-[#238636] hover:bg-[#2ea043] text-white text-[12px] font-medium px-5 py-2 rounded-lg transition">确认创建并启动</button>
       </div>
     </div>
   </div>

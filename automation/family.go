@@ -137,7 +137,7 @@ func doFamilyAccept(email string, bctx playwright.BrowserContext, page playwrigh
 	}
 
 	if foundIdx == -1 {
-		return fmt.Errorf("family: 未找到家庭组邀请邮件")
+		return errFamilyNotFound
 	}
 
 	L.Info(email, fmt.Sprintf("找到家庭组邮件 (第 %d 行), 点击打开...", foundIdx+1))

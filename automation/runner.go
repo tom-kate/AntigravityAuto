@@ -389,6 +389,12 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 			return
 		}
 
+		// Family invitation email not found: mark as failed, no retry
+		if err == errFamilyNotFound {
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "family_not_found", "未找到家庭组邀请邮件", "未找到家庭组")
+			return
+		}
+
 		errMsg := fmt.Sprintf("第 %d/%d 次: %v", attempt, db.MaxRetries, err)
 		L.Fail(email, errMsg)
 

@@ -9,6 +9,8 @@ createApp({
     const masterInput=ref(''),addExpiry=ref(''),addPurchased=ref(''),addRemark=ref(''),showAddModal=ref(false);
     const editingId=ref(''),editRemark=ref(''),editExpiry=ref('');
     const subModal=ref({show:false,type:'batch',masterID:'',text:'',concurrency:1});
+    const confirmAccs=ref([]);
+    const showConfirm=ref(false);
     const cpaModal=ref({show:false,email:'',statusText:'',labelCls:'',json:'',jsonColor:''});
     const masterDetail=ref({show:false,email:'',password:'',aux_email:'',two_fa_link:'',remark:''});
     const subDetail=ref({show:false,email:'',password:'',aux_email:'',two_fa:'',status:'',operation_status:'',step:'',phone_bound:false});
@@ -21,8 +23,8 @@ createApp({
     const totalSubs=computed(()=>{let c=0;batches.value.forEach(b=>c+=b.accounts.length);return c});
 
     // Status & steps
-    const SL={pending:'等待中',running:'运行中',success:'成功',failed:'失败',error:'异常',finished:'已完成'};
-    const SP={starting:'启动中',login:'登录',family_accept:'加入家庭组',oauth:'OAuth授权',check_quota:'检查额度',age_verify:'年龄验证',check_cpa:'CPA检测',phone_bind:'绑定手机',delete_cpa:'删除凭证',oauth_redo:'重新授权',done:'完成',retry_wait:'重试等待',exhausted:'已耗尽',recaptcha:'人机验证',manual_check:'等待人工绑定',upload_failed:'凭证上传失败',need_restart:'需要重启',quota_dead:'账号死亡',family_country:'国家不支持',family_already_in_group:'已在家庭组'};
+    const SL={pending:'等待中',running:'运行中',success:'已成功',failed:'已失败',error:'已异常',finished:'已完成'};
+    const SP={starting:'启动中',login:'登录中',family_accept:'加入家庭',oauth:'授权中',check_quota:'查看额度',age_verify:'验证年龄',check_cpa:'检测凭证',phone_bind:'绑定手机',delete_cpa:'删除凭证',oauth_redo:'重新授权',done:'已完成',retry_wait:'等待重试',exhausted:'重试耗尽',recaptcha:'人机验证',manual_check:'人工绑定',upload_failed:'上传失败',need_restart:'需要重启',quota_dead:'账号死亡',family_country:'国家不符',family_already_in_group:'已在家庭',family_not_found:'无家庭组'};
     function statusLabel(s){return SL[s]||s}
     function stepLabel(s){return SP[s]||s||'--'}
     function statusColor(s){return{success:'text-[#3fb950]',failed:'text-[#f85149]',error:'text-[#d29922]',running:'text-[#58a6ff]',pending:'text-[#484f58]'}[s]||'text-[#484f58]'}
@@ -90,10 +92,8 @@ createApp({
       if(sm.type==='batch'){
         const accs=sm.text.trim().split('\n').filter(l=>l.trim()).map(l=>{const p=l.split('---');return{email:(p[0]||'').trim(),password:(p[1]||'').trim(),aux_email:(p[2]||'').trim(),two_fa:(p[3]||'').trim()}}).filter(a=>a.email&&a.password);
         if(!accs.length){showToast('没有有效子号',false);return}
-        try{const r=await axios.post('/api/batches',{master_id:sm.masterID,accounts:accs,concurrency:sm.concurrency||1});showToast('批次已创建');sm.show=false;loadMain();
-          // Auto-start
-          try{await axios.post('/api/batch/'+r.data.id+'/start')}catch(e){}
-        }catch(e){showToast(e.response?.data?.error||'创建失败',false)}
+        confirmAccs.value=accs;
+        showConfirm.value=true;
       } else {
         const accs=sm.text.trim().split('\n').filter(l=>l.trim()).map(l=>{const p=l.split('---');return{email:(p[0]||'').trim(),password:(p[1]||'').trim(),aux_email:(p[2]||'').trim(),two_fa:(p[3]||'').trim()}}).filter(a=>a.email&&a.password);
         if(!accs.length){showToast('没有有效子号',false);return}
@@ -101,6 +101,14 @@ createApp({
         catch(e){showToast(e.response?.data?.error||'导入失败',false)}
       }
     }
+    async function confirmCreateBatch(){
+      const sm=subModal.value;
+      const accs=confirmAccs.value;
+      try{const r=await axios.post('/api/batches',{master_id:sm.masterID,accounts:accs,concurrency:sm.concurrency||1});showToast('批次已创建');showConfirm.value=false;confirmAccs.value=[];sm.show=false;loadMain();
+        try{await axios.post('/api/batch/'+r.data.id+'/start')}catch(e){}
+      }catch(e){showToast(e.response?.data?.error||'创建失败',false)}
+    }
+    function cancelConfirm(){showConfirm.value=false;confirmAccs.value=[];}
 
     // Phone bind
     async function bindPhone(bid,idx){try{await axios.post('/api/batch/'+bid+'/account/'+idx+'/bind-phone');showToast('手机绑定已启动');loadMain()}catch(e){showToast(e.response?.data?.error||'启动失败',false)}}
@@ -124,7 +132,7 @@ createApp({
 
     return{masters,batches,cpaFiles,smsBalance,quotas,quotaLoading,quotaLoadingSet,masterInput,addExpiry,addPurchased,addRemark,showAddModal,cpaModal,masterDetail,subDetail,totalSubs,
       editingId,editRemark,editExpiry,startEdit,saveEdit,toggleWeeklyLimit,refreshAllQuotas,refreshSingleQuota,refreshSMSBalance,get2FA,
-      subModal,openSubModal,submitSubModal,showMasterInfo,copyText,copyMasterFull,showSubInfo,copySubFull,warrantyStatus,
+      subModal,openSubModal,submitSubModal,confirmAccs,showConfirm,confirmCreateBatch,cancelConfirm,showMasterInfo,copyText,copyMasterFull,showSubInfo,copySubFull,warrantyStatus,
       statusLabel,stepLabel,statusColor,dotClass,batchLabel,batchColor,batchDot,cnt,hasNonSuccess,
       cpaStatusText,cpaLabelClass,cpaErrorType,showCPADetail,barColor,barTextColor,fmtReset,
       getMasterQuotaOverview,globalQuota,quotaSubCount,

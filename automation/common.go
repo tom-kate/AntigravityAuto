@@ -31,6 +31,9 @@ var errFamilyCountry = fmt.Errorf("family_country: 国家不支持, 无法加入
 // errFamilyAlreadyInGroup is a sentinel error indicating the account is already in another family group.
 var errFamilyAlreadyInGroup = fmt.Errorf("family_already_in_group: 已在其他家庭组中, 无法加入")
 
+// errFamilyNotFound is a sentinel error indicating the family invitation email was not found.
+var errFamilyNotFound = fmt.Errorf("family_not_found: 未找到家庭组邀请邮件")
+
 // errAgeVerification is a sentinel error indicating age verification failed (card invalid).
 var errAgeVerification = fmt.Errorf("age_verify: 年龄验证失败, 信用卡无效")
 
