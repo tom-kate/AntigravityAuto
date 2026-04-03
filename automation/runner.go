@@ -226,10 +226,10 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 				}
 			}
 			if needAgeVerify {
-				// Attempt age verification with credit card
+				// Attempt age verification with credit card (no retry)
 				updateStatus(batchID, idx, db.StatusRunning, "age_verify", "")
 				if verifyErr := doAgeVerify(email, page); verifyErr != nil {
-					return verifyErr
+					return errAgeVerification
 				}
 				// Age verified — re-do OAuth to get fresh credentials
 				L.OK(email, "年龄验证通过, 重新 OAuth 授权...")

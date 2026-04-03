@@ -66,7 +66,7 @@ type Batch struct {
 	FinishedAt  *time.Time   `json:"finished_at,omitempty"`
 }
 
-const MaxRetries = 3
+const MaxRetries = 2
 const MaxSubsPerMaster = 5
 
 type Database struct {
