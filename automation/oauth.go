@@ -68,6 +68,12 @@ func doOAuthStart(email string, account db.SubAccount, bctx playwright.BrowserCo
 			return errRecaptcha
 		}
 
+		// GCP banned: redirected to restrictions page
+		if strings.Contains(currentURL, "myaccount.google.com/restrictions") {
+			L.Fail(email, fmt.Sprintf("GCP 已被封禁, 跳转到限制页面: %s", currentURL))
+			return errGCPBanned
+		}
+
 		// Callback already happened
 		if strings.Contains(currentURL, "localhost:51121/oauth-callback") {
 			L.OK(email, "OAuth 回调已触发")

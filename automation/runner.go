@@ -395,6 +395,12 @@ func runAutomationForAccount(pw *playwright.Playwright, account db.SubAccount, b
 			return
 		}
 
+		// GCP banned: mark as failed, no retry
+		if err == errGCPBanned {
+			updateStatusWithOp(batchID, idx, db.StatusFailed, "gcp_banned", "GCP 已被封禁, 账号不可用", "封GCP")
+			return
+		}
+
 		errMsg := fmt.Sprintf("第 %d/%d 次: %v", attempt, db.MaxRetries, err)
 		L.Fail(email, errMsg)
 

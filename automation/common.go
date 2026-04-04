@@ -40,6 +40,9 @@ var errAgeVerification = fmt.Errorf("age_verify: 年龄验证失败, 信用卡�
 // errAgeNeedVerify is a sentinel error indicating account needs age verification but card is known bad.
 var errAgeNeedVerify = fmt.Errorf("age_need_verify: 需要年龄验证, 信用卡已知不可用")
 
+// errGCPBanned is a sentinel error indicating the account's GCP has been banned (redirected to restrictions page).
+var errGCPBanned = fmt.Errorf("gcp_banned: GCP 已被封禁")
+
 // checkRecaptcha checks if the current URL is a recaptcha challenge page.
 func checkRecaptcha(pageURL string) bool {
 	return strings.Contains(pageURL, "signin/challenge/recaptcha")
