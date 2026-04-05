@@ -295,9 +295,6 @@ func handleBatch(w http.ResponseWriter, r *http.Request) {
 		case "bind-phone":
 			go automation.RunPhoneBind(batchID, idx)
 			json.NewEncoder(w).Encode(map[string]string{"status": "started"})
-		case "age-verify":
-			go automation.RunAgeVerify(batchID, idx)
-			json.NewEncoder(w).Encode(map[string]string{"status": "started"})
 		default:
 			http.Error(w, `{"error":"unknown sub-action"}`, 400)
 		}

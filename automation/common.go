@@ -37,9 +37,6 @@ var errFamilyNotFound = fmt.Errorf("family_not_found: 未找到家庭组邀请�
 // errAgeVerification is a sentinel error indicating age verification failed (card invalid).
 var errAgeVerification = fmt.Errorf("age_verify: 年龄验证失败, 信用卡无效")
 
-// errAgeNeedVerify is a sentinel error indicating account needs age verification but card is known bad.
-var errAgeNeedVerify = fmt.Errorf("age_need_verify: 需要年龄验证, 信用卡已知不可用")
-
 // errGCPBanned is a sentinel error indicating the account's GCP has been banned (redirected to restrictions page).
 var errGCPBanned = fmt.Errorf("gcp_banned: GCP 已被封禁")
 
