@@ -166,6 +166,10 @@ func runSingleAttempt(pw *playwright.Playwright, account db.SubAccount, batchID 
 			if err == nil {
 				return nil
 			}
+			// Fatal errors: do not retry, propagate immediately
+			if err == errGCPBanned || err == errRecaptcha {
+				return err
+			}
 			L.Warn(email, fmt.Sprintf("%s 失败: %v", label, err))
 			if oauthRetry == maxOAuthRetries {
 				return fmt.Errorf("%s failed after %d retries: %w", label, maxOAuthRetries, err)

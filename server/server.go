@@ -33,6 +33,7 @@ func Start(port int) error {
 	http.HandleFunc("/api/batch/", handleBatch)
 	http.HandleFunc("/api/cpa-files", handleCPAFiles)
 	http.HandleFunc("/api/cpa-quota", handleCPAQuota)
+	http.HandleFunc("/api/mark-failed", handleMarkFailed)
 	http.HandleFunc("/api/sms-balance", handleSMSBalance)
 	http.HandleFunc("/api/sms-countries", handleSMSCountries)
 	http.HandleFunc("/api/sms-services", handleSMSServices)
@@ -349,6 +350,28 @@ func handleCPAQuota(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(quota)
+}
+
+func handleMarkFailed(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"method not allowed"}`, 405)
+		return
+	}
+	var req struct {
+		Email           string `json:"email"`
+		OperationStatus string `json:"operation_status"`
+	}
+	body, _ := io.ReadAll(r.Body)
+	if err := json.Unmarshal(body, &req); err != nil || req.Email == "" {
+		http.Error(w, `{"error":"missing email"}`, 400)
+		return
+	}
+	if req.OperationStatus == "" {
+		req.OperationStatus = "账户封禁"
+	}
+	affected := db.DB.SetSubAccountFailedByEmail(req.Email, req.OperationStatus)
+	json.NewEncoder(w).Encode(map[string]int64{"affected": affected})
 }
 
 func handleConfig(w http.ResponseWriter, r *http.Request) {

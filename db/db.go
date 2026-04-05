@@ -724,6 +724,23 @@ func (d *Database) SetSubAccountSuccess(batchID string, idx int) bool {
 	return true
 }
 
+// SetSubAccountFailedByEmail marks all sub accounts with the given email as failed with the specified operation status.
+func (d *Database) SetSubAccountFailedByEmail(email string, operationStatus string) int64 {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	now := time.Now().Format(time.RFC3339)
+	res, err := d.db.Exec(
+		`UPDATE sub_accounts SET status = ?, operation_status = ?, finished_at = COALESCE(finished_at, ?) WHERE LOWER(email) = LOWER(?) AND status NOT IN (?, ?)`,
+		string(StatusFailed), operationStatus, now, email, string(StatusFailed), string(StatusSuccess),
+	)
+	if err != nil {
+		return 0
+	}
+	affected, _ := res.RowsAffected()
+	return affected
+}
+
 func (d *Database) DeleteBatch(id string) bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
