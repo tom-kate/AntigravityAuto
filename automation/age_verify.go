@@ -33,13 +33,19 @@ func checkAgeVerification(email string, page playwright.Page) (bool, error) {
 	}
 	time.Sleep(3 * time.Second)
 
-	// Check for the success SVG image — if present, age verification is NOT needed
-	// This is language-independent: the SVG src is always the same regardless of account language
+	// Check for the success heading — if present, age verification is NOT needed.
+	// The h1[jsname="r4nke"] element appears on the success page with a message
+	// like "You have verified your age" (in the account's language).
+	// We also fall back to the legacy SVG check just in case.
+	successHeading := agePage.Locator(`h1[jsname="r4nke"]`)
 	successImg := agePage.Locator(`img[src*="ageui/success"]`)
+	if cnt, _ := successHeading.Count(); cnt > 0 {
+		return false, nil
+	}
 	if cnt, _ := successImg.Count(); cnt > 0 {
 		return false, nil
 	}
 
-	// If no success image found, age verification IS needed
+	// If neither indicator found, age verification IS needed
 	return true, nil
 }
